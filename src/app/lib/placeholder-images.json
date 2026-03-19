@@ -1,0 +1,40 @@
+{
+  "placeholderImages": [
+    {
+      "id": "mri-scanner",
+      "description": "MRI Scanner machine in a clean hospital room",
+      "imageUrl": "https://picsum.photos/seed/mri/800/600",
+      "imageHint": "mri scanner"
+    },
+    {
+      "id": "ventilator",
+      "description": "Modern hospital ventilator device",
+      "imageUrl": "https://picsum.photos/seed/ventilator/800/600",
+      "imageHint": "medical ventilator"
+    },
+    {
+      "id": "xray",
+      "description": "Digital X-Ray machine",
+      "imageUrl": "https://picsum.photos/seed/xray/800/600",
+      "imageHint": "xray machine"
+    },
+    {
+      "id": "defibrillator",
+      "description": "Emergency portable defibrillator",
+      "imageUrl": "https://picsum.photos/seed/defib/800/600",
+      "imageHint": "defibrillator"
+    },
+    {
+      "id": "engineer-profile",
+      "description": "Professional medical engineer portrait",
+      "imageUrl": "https://picsum.photos/seed/engineer/300/300",
+      "imageHint": "professional man"
+    },
+    {
+      "id": "hospital-profile",
+      "description": "Modern hospital building facade",
+      "imageUrl": "https://picsum.photos/seed/hospital/300/300",
+      "imageHint": "hospital building"
+    }
+  ]
+}

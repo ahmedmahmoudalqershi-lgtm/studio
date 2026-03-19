@@ -21,7 +21,7 @@ import {
   Hospital
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, serverTimestamp } from 'firebase/firestore';
 import { updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
 export default function ProfilePage() {
@@ -30,14 +30,12 @@ export default function ProfilePage() {
   const { toast } = useToast();
   const [isSaving, setIsSaving] = useState(false);
 
-  // 1. Get base user role
   const userRef = useMemoFirebase(() => {
     if (!firestore || !user) return null;
     return doc(firestore, 'users', user.uid);
   }, [firestore, user?.uid]);
   const { data: userData } = useDoc(userRef);
 
-  // 2. Get detailed profile based on role
   const role = userData?.role || 'hospital';
   const profileRef = useMemoFirebase(() => {
     if (!firestore || !user) return null;
@@ -47,7 +45,6 @@ export default function ProfilePage() {
 
   const { data: profile, isLoading } = useDoc(profileRef);
 
-  // Form states
   const [formData, setFormData] = useState<any>({});
 
   useEffect(() => {
@@ -68,13 +65,13 @@ export default function ProfilePage() {
       
       toast({
         title: "تم تحديث الملف الشخصي",
-        description: "تم حفظ التغييرات الخاصة بك بنجاح في قاعدة البيانات.",
+        description: "تم حفظ بياناتك بنجاح.",
       });
     } catch (err) {
       toast({
         variant: "destructive",
         title: "خطأ",
-        description: "تعذر حفظ التغييرات، يرجى المحاولة لاحقاً.",
+        description: "تعذر حفظ التغييرات.",
       });
     } finally {
       setIsSaving(false);
@@ -85,7 +82,7 @@ export default function ProfilePage() {
     <Shell>
       <div className="flex flex-col items-center justify-center h-64 gap-4">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <p>جاري تحميل ملفك الشخصي...</p>
+        <p>جاري تحميل ملفك الشخصي الحقيقي...</p>
       </div>
     </Shell>
   );
@@ -94,22 +91,25 @@ export default function ProfilePage() {
     <Shell>
       <div className="max-w-4xl mx-auto space-y-8" dir="rtl">
         <div className="text-right">
-          <h1 className="text-3xl font-black font-headline text-primary">إدارة الملف الشخصي</h1>
-          <p className="text-muted-foreground">قم بتحديث معلوماتك المهنية وبيانات الاتصال الخاصة بك.</p>
+          <h1 className="text-3xl font-black font-headline text-primary">الملف الشخصي</h1>
+          <p className="text-muted-foreground">إدارة المعلومات المهنية وصورة الحساب.</p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          <Card className="md:col-span-1 border-none shadow-xl overflow-hidden bg-white/50 backdrop-blur-sm">
-            <div className="h-24 bg-primary/10 w-full" />
-            <CardContent className="pt-0 flex flex-col items-center text-center -mt-12">
+          <Card className="md:col-span-1 border-none shadow-xl overflow-hidden rounded-3xl">
+            <div className="h-32 bg-gradient-to-br from-primary to-primary/80 w-full" />
+            <CardContent className="pt-0 flex flex-col items-center text-center -mt-16">
               <div className="relative group">
-                <Avatar className="h-32 w-32 ring-4 ring-white shadow-2xl">
-                  <AvatarImage src={`https://picsum.photos/seed/${user?.uid}/300/300`} />
-                  <AvatarFallback className="text-4xl font-bold bg-primary/5 text-primary">
+                <Avatar className="h-32 w-32 ring-8 ring-white shadow-2xl">
+                  <AvatarImage 
+                    src={`https://picsum.photos/seed/${user?.uid}/300/300`} 
+                    data-ai-hint={role === 'hospital' ? 'hospital building' : 'professional man'}
+                  />
+                  <AvatarFallback className="text-4xl font-bold bg-muted text-primary">
                     {user?.email?.[0].toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
-                <div className="absolute inset-0 bg-black/40 rounded-full opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center cursor-pointer scale-95 group-hover:scale-100">
+                <div className="absolute inset-0 bg-black/40 rounded-full opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center cursor-pointer">
                   <Camera className="text-white h-8 w-8" />
                 </div>
               </div>
@@ -118,42 +118,36 @@ export default function ProfilePage() {
                 {role === 'hospital' ? profile?.hospitalName : profile?.fullName}
               </h2>
               
-              <Badge variant="secondary" className="mt-2 px-4 py-1">
+              <Badge variant="secondary" className="mt-2 px-4 py-1 rounded-lg">
                 {role === 'hospital' ? (
-                  <span className="flex items-center gap-1"><Hospital className="h-3 w-3" /> مستشفى مسجل</span>
+                  <span className="flex items-center gap-1"><Hospital className="h-3 w-3" /> مستشفى</span>
                 ) : (
                   <span className="flex items-center gap-1"><ShieldCheck className="h-3 w-3" /> مهندس معتمد</span>
                 )}
               </Badge>
 
               <div className="w-full border-t mt-8 pt-6 space-y-4">
-                <div className="flex items-center gap-3 text-sm text-muted-foreground justify-center hover:text-primary transition-colors">
+                <div className="flex items-center gap-3 text-sm text-muted-foreground justify-center">
                   <Mail className="h-4 w-4" /> {user?.email}
                 </div>
-                {profile?.phone && (
-                  <div className="flex items-center gap-3 text-sm text-muted-foreground justify-center">
-                    <Phone className="h-4 w-4" /> {profile.phone}
-                  </div>
-                )}
               </div>
             </CardContent>
           </Card>
 
-          <Card className="md:col-span-2 border-none shadow-xl bg-white">
+          <Card className="md:col-span-2 border-none shadow-xl rounded-3xl">
             <CardHeader className="text-right border-b pb-4 mb-4">
-              <CardTitle className="text-xl font-bold">المعلومات الأساسية</CardTitle>
-              <CardDescription>هذه البيانات تظهر للمستشفيات والمهندسين عند التعامل مع الطلبات.</CardDescription>
+              <CardTitle className="text-xl font-bold">المعلومات المهنية</CardTitle>
+              <CardDescription>هذه البيانات تظهر عند التعامل مع الطلبات في المنصة.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6 text-right">
               {role === 'hospital' ? (
                 <div className="space-y-4">
                   <div className="space-y-2">
-                    <Label className="font-bold">اسم المستشفى</Label>
+                    <Label className="font-bold">اسم المستشفى الرسمي</Label>
                     <Input 
                       value={formData.hospitalName || ""} 
                       onChange={(e) => setFormData({...formData, hospitalName: e.target.value})}
-                      placeholder="أدخل اسم المستشفى الرسمي" 
-                      className="text-right h-12" 
+                      className="text-right h-12 rounded-xl" 
                     />
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -162,7 +156,7 @@ export default function ProfilePage() {
                       <Input 
                         value={formData.city || ""} 
                         onChange={(e) => setFormData({...formData, city: e.target.value})}
-                        className="text-right h-11" 
+                        className="text-right h-11 rounded-xl" 
                       />
                     </div>
                     <div className="space-y-2">
@@ -170,17 +164,16 @@ export default function ProfilePage() {
                       <Input 
                         value={formData.phone || ""} 
                         onChange={(e) => setFormData({...formData, phone: e.target.value})}
-                        placeholder="05XXXXXXXX"
-                        className="text-right h-11" 
+                        className="text-right h-11 rounded-xl" 
                       />
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <Label className="font-bold">العنوان التفصيلي</Label>
+                    <Label className="font-bold">العنوان</Label>
                     <Input 
                       value={formData.address || ""} 
                       onChange={(e) => setFormData({...formData, address: e.target.value})}
-                      className="text-right h-11" 
+                      className="text-right h-11 rounded-xl" 
                     />
                   </div>
                 </div>
@@ -192,7 +185,7 @@ export default function ProfilePage() {
                       <Input 
                         value={formData.fullName || ""} 
                         onChange={(e) => setFormData({...formData, fullName: e.target.value})}
-                        className="text-right h-11" 
+                        className="text-right h-11 rounded-xl" 
                       />
                     </div>
                     <div className="space-y-2">
@@ -200,17 +193,17 @@ export default function ProfilePage() {
                       <Input 
                         value={formData.phone || ""} 
                         onChange={(e) => setFormData({...formData, phone: e.target.value})}
-                        className="text-right h-11" 
+                        className="text-right h-11 rounded-xl" 
                       />
                     </div>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t">
                     <div className="space-y-2">
-                      <Label className="font-bold">التخصص الأساسي</Label>
+                      <Label className="font-bold">التخصص</Label>
                       <Input 
                         value={formData.specialization || ""} 
                         onChange={(e) => setFormData({...formData, specialization: e.target.value})}
-                        className="text-right h-11" 
+                        className="text-right h-11 rounded-xl" 
                       />
                     </div>
                     <div className="space-y-2">
@@ -219,18 +212,8 @@ export default function ProfilePage() {
                         type="number"
                         value={formData.yearsExperience || 0} 
                         onChange={(e) => setFormData({...formData, yearsExperience: parseInt(e.target.value) || 0})}
-                        className="text-right h-11" 
+                        className="text-right h-11 rounded-xl" 
                       />
-                    </div>
-                  </div>
-                  <div className="p-4 bg-primary/5 rounded-xl flex items-center justify-between border border-primary/10">
-                    <div className="text-right">
-                      <p className="text-sm font-bold text-primary">التقييم الحالي</p>
-                      <p className="text-2xl font-black">{profile?.rating || '5.0'}</p>
-                    </div>
-                    <div className="text-left">
-                      <p className="text-sm font-bold text-muted-foreground">إجمالي المهام</p>
-                      <p className="text-2xl font-black">{profile?.totalJobs || 0}</p>
                     </div>
                   </div>
                 </div>
@@ -240,7 +223,7 @@ export default function ProfilePage() {
                 <Button 
                   onClick={handleSave} 
                   disabled={isSaving} 
-                  className="w-full sm:w-auto gap-2 px-10 h-12 shadow-lg shadow-primary/20 transition-all active:scale-95"
+                  className="w-full sm:w-auto gap-2 px-10 h-12 rounded-xl shadow-lg"
                 >
                   {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                   حفظ البيانات الشخصية

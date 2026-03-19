@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Label } from '@/components/ui/label';
-import { Wrench, Hospital, ShieldCheck, Loader2 } from 'lucide-react';
+import { Wrench, Hospital, ShieldCheck, Loader2, User as UserIcon } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
@@ -16,7 +16,9 @@ import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [name, setName] = useState(''); // حقل الاسم الجديد لجعل الملف الشخصي حقيقياً
   const [isLoading, setIsLoading] = useState(false);
+  const [isSignUp, setIsSignUp] = useState(false);
   const [activeRole, setActiveRole] = useState<'hospital' | 'engineer'>('hospital');
   
   const auth = useAuth();
@@ -37,41 +39,41 @@ export default function LoginPage() {
       .match(/^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/);
   };
 
-  async function handleAuth(type: 'login' | 'signup', role: 'hospital' | 'engineer') {
-    if (!email || !password) {
-      toast({ variant: "destructive", title: "بيانات ناقصة", description: "يرجى إدخال البريد الإلكتروني وكلمة المرور." });
+  async function handleAuth() {
+    if (!email || !password || (isSignUp && !name)) {
+      toast({ variant: "destructive", title: "بيانات ناقصة", description: "يرجى إكمال جميع الحقول المطلوبة." });
       return;
     }
 
     if (!validateEmail(email)) {
-      toast({ variant: "destructive", title: "بريد إلكتروني غير صالح", description: "يرجى إدخال بريد إلكتروني بصيغة صحيحة." });
+      toast({ variant: "destructive", title: "بريد غير صالح", description: "يرجى إدخال بريد إلكتروني صحيح." });
       return;
     }
 
     setIsLoading(true);
     
     try {
-      if (type === 'signup') {
+      if (isSignUp) {
         const userCredential = await createUserWithEmailAndPassword(auth, email.trim(), password);
         const newUser = userCredential.user;
 
-        // 1. Create base user document for DBAC
+        // 1. إنشاء وثيقة المستخدم الأساسية
         await setDoc(doc(firestore, 'users', newUser.uid), {
           id: newUser.uid,
           email: newUser.email,
-          role: role,
+          role: activeRole,
           status: 'verified',
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
         });
 
-        // 2. Create the specialized profile document
-        if (role === 'hospital') {
+        // 2. إنشاء الملف الشخصي المتخصص بالاسم الحقيقي المختار
+        if (activeRole === 'hospital') {
           await setDoc(doc(firestore, 'hospitalProfiles', newUser.uid), {
             id: newUser.uid,
             userId: newUser.uid,
-            hospitalName: `مستشفى ${email.split('@')[0]}`,
-            address: "سيتم التحديث لاحقاً",
+            hospitalName: name,
+            address: "الرياض، المملكة العربية السعودية",
             city: "الرياض",
             phone: "05XXXXXXXX",
             createdAt: serverTimestamp(),
@@ -81,10 +83,10 @@ export default function LoginPage() {
           await setDoc(doc(firestore, 'engineerProfiles', newUser.uid), {
             id: newUser.uid,
             userId: newUser.uid,
-            fullName: `المهندس ${email.split('@')[0]}`,
+            fullName: name,
             phone: "05XXXXXXXX",
-            specialization: "أجهزة طبية عامة",
-            yearsExperience: 1,
+            specialization: "صيانة أجهزة طبية",
+            yearsExperience: 2,
             rating: 5,
             totalJobs: 0,
             createdAt: serverTimestamp(),
@@ -92,65 +94,80 @@ export default function LoginPage() {
           });
         }
 
-        toast({ title: "تم إنشاء الحساب", description: `مرحباً بك كـ ${role === 'hospital' ? 'مستشفى' : 'مهندس'}!` });
+        toast({ title: "مرحباً بك!", description: "تم إنشاء حسابك الحقيقي بنجاح." });
       } else {
         await signInWithEmailAndPassword(auth, email.trim(), password);
-        toast({ title: "تم تسجيل الدخول", description: "مرحباً بعودتك!" });
+        toast({ title: "تم الدخول", description: "مرحباً بعودتك إلى المنصة." });
       }
     } catch (err: any) {
-      let message = "حدث خطأ أثناء محاولة الدخول.";
-      if (err.code === 'auth/invalid-credential') message = "البريد الإلكتروني أو كلمة المرور غير صحيحة.";
-      else if (err.code === 'auth/email-already-in-use') message = "هذا البريد الإلكتروني مسجل مسبقاً.";
+      let message = "فشلت العملية، يرجى التحقق من البيانات.";
+      if (err.code === 'auth/email-already-in-use') message = "هذا البريد مسجل بالفعل.";
+      else if (err.code === 'auth/wrong-password') message = "كلمة المرور غير صحيحة.";
       
-      toast({ variant: "destructive", title: "فشل العملية", description: message });
+      toast({ variant: "destructive", title: "خطأ في الدخول", description: message });
     } finally {
       setIsLoading(false);
     }
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4" dir="rtl">
-      <Card className="w-full max-w-md shadow-2xl border-t-4 border-t-primary">
-        <CardHeader className="text-center">
-          <div className="bg-primary mx-auto w-16 h-16 rounded-2xl flex items-center justify-center text-primary-foreground mb-4">
+    <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4" dir="rtl">
+      <Card className="w-full max-w-md shadow-2xl border-none overflow-hidden rounded-3xl">
+        <div className="bg-primary p-8 text-center text-primary-foreground relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 blur-2xl" />
+          <div className="bg-white/20 backdrop-blur-md mx-auto w-16 h-16 rounded-2xl flex items-center justify-center mb-4">
             <Wrench className="h-8 w-8" />
           </div>
-          <CardTitle className="text-2xl font-black font-headline">بوابة صيانة الأجهزة الطبية</CardTitle>
-          <CardDescription>نظام متكامل للمستشفيات والمهندسين</CardDescription>
-        </CardHeader>
-        <CardContent>
+          <CardTitle className="text-3xl font-black font-headline">بوابة الصيانة</CardTitle>
+          <CardDescription className="text-primary-foreground/80 mt-2">نظام صيانة الأجهزة الطبية المتكامل</CardDescription>
+        </div>
+
+        <CardContent className="pt-8">
           <Tabs defaultValue="hospital" className="w-full" onValueChange={(v) => setActiveRole(v as any)}>
-            <TabsList className="grid w-full grid-cols-2 mb-8 h-12">
-              <TabsTrigger value="hospital" className="gap-2">
+            <TabsList className="grid w-full grid-cols-2 mb-8 bg-muted/50 p-1 h-14 rounded-2xl">
+              <TabsTrigger value="hospital" className="gap-2 rounded-xl data-[state=active]:shadow-md">
                 <Hospital className="h-4 w-4" /> مستشفى
               </TabsTrigger>
-              <TabsTrigger value="engineer" className="gap-2">
+              <TabsTrigger value="engineer" className="gap-2 rounded-xl data-[state=active]:shadow-md">
                 <ShieldCheck className="h-4 w-4" /> مهندس
               </TabsTrigger>
             </TabsList>
             
-            <div className="space-y-4">
+            <div className="space-y-5">
+              {isSignUp && (
+                <div className="space-y-2">
+                  <Label htmlFor="name">{activeRole === 'hospital' ? 'اسم المستشفى' : 'الاسم الكامل'}</Label>
+                  <div className="relative">
+                    <UserIcon className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input id="name" placeholder={activeRole === 'hospital' ? 'مثال: مستشفى التخصصي' : 'مثال: م. أحمد علي'} className="pr-10 h-12 rounded-xl" value={name} onChange={(e) => setName(e.target.value)} />
+                  </div>
+                </div>
+              )}
+
               <div className="space-y-2">
                 <Label htmlFor="email">البريد الإلكتروني</Label>
-                <Input id="email" type="email" placeholder="name@example.com" value={email} onChange={(e) => setEmail(e.target.value)} />
+                <Input id="email" type="email" placeholder="example@email.com" className="h-12 rounded-xl" value={email} onChange={(e) => setEmail(e.target.value)} />
               </div>
+
               <div className="space-y-2">
                 <Label htmlFor="password">كلمة المرور</Label>
-                <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
+                <Input id="password" type="password" className="h-12 rounded-xl" value={password} onChange={(e) => setPassword(e.target.value)} />
               </div>
-              <div className="grid grid-cols-2 gap-4 pt-4">
-                <Button onClick={() => handleAuth('login', activeRole)} disabled={isLoading} className="w-full">
-                  {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'دخول'}
-                </Button>
-                <Button variant="outline" onClick={() => handleAuth('signup', activeRole)} disabled={isLoading} className="w-full">
-                  تسجيل جديد
+
+              <Button onClick={handleAuth} disabled={isLoading} className="w-full h-14 text-lg rounded-2xl shadow-xl shadow-primary/20 mt-4">
+                {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : (isSignUp ? 'إنشاء حساب حقيقي' : 'تسجيل الدخول')}
+              </Button>
+
+              <div className="text-center">
+                <Button variant="link" onClick={() => setIsSignUp(!isSignUp)} className="text-sm">
+                  {isSignUp ? 'لديك حساب بالفعل؟ سجل دخولك' : 'لا تملك حساباً؟ أنشئ حساباً جديداً'}
                 </Button>
               </div>
             </div>
           </Tabs>
         </CardContent>
-        <CardFooter className="text-center text-xs text-muted-foreground justify-center">
-          بالدخول، أنت توافق على شروط الخدمة وسياسة الخصوصية الخاصة بالمنصة.
+        <CardFooter className="text-center text-xs text-muted-foreground justify-center border-t py-4 bg-muted/20">
+          بالدخول، أنت توافق على شروط الخدمة وسياسة الخصوصية.
         </CardFooter>
       </Card>
     </div>
