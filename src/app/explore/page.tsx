@@ -3,7 +3,7 @@
 
 import React, { useState } from 'react';
 import { Shell } from '@/components/layout/Shell';
-import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
+import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { collection, query, where, orderBy } from 'firebase/firestore';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -16,15 +16,17 @@ import { Skeleton } from '@/components/ui/skeleton';
 export default function ExploreRequestsPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const firestore = useFirestore();
+  const { user } = useUser();
 
   const requestsQuery = useMemoFirebase(() => {
-    if (!firestore) return null;
+    // ننتظر حتى يتوفر firestore والمستخدم المسجل قبل تنفيذ الاستعلام
+    if (!firestore || !user) return null;
     return query(
       collection(firestore, 'maintenanceRequests'), 
       where('status', '==', 'open'),
       orderBy('createdAt', 'desc')
     );
-  }, [firestore]);
+  }, [firestore, user]);
 
   const { data: requests, isLoading } = useCollection(requestsQuery);
 

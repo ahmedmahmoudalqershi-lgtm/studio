@@ -24,7 +24,7 @@ export function EngineerDashboard() {
   const { user } = useUser();
   const firestore = useFirestore();
 
-  // جلب الملف الشخصي للمهندس (اختياري للعرض)
+  // جلب الملف الشخصي للمهندس
   const profileQuery = useMemoFirebase(() => {
     if (!firestore || !user) return null;
     return query(collection(firestore, 'engineerProfiles'), where('userId', '==', user.uid), limit(1));
@@ -33,21 +33,19 @@ export function EngineerDashboard() {
   const { data: profiles, isLoading: profileLoading } = useCollection(profileQuery);
   const profile = profiles?.[0];
 
-  // جلب العروض التي قدمها المهندس
+  // جلب المهام المسندة للمهندس
   const bidsQuery = useMemoFirebase(() => {
     if (!firestore || !user) return null;
-    // ملاحظة: في النسخة الكاملة ستحتاج لاستخدام collectionGroup أو بنية مختلفة، 
-    // هنا نفترض وجود مجموعة عليا للسهولة في الـ MVP أو البحث في الطلبات
     return query(collection(firestore, 'maintenanceRequests'), where('assignedEngineerId', '==', user.uid));
   }, [firestore, user]);
 
   const { data: activeJobs, isLoading: jobsLoading } = useCollection(bidsQuery);
 
-  // جلب أحدث الطلبات العامة المتاحة
+  // جلب أحدث الطلبات العامة المتاحة (يجب التأكد من وجود مستخدم قبل الاستعلام)
   const openRequestsQuery = useMemoFirebase(() => {
-    if (!firestore) return null;
+    if (!firestore || !user) return null;
     return query(collection(firestore, 'maintenanceRequests'), where('status', '==', 'open'), limit(5));
-  }, [firestore]);
+  }, [firestore, user]);
 
   const { data: openRequests, isLoading: requestsLoading } = useCollection(openRequestsQuery);
 

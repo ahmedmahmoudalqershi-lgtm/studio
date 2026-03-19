@@ -53,13 +53,17 @@ export default function RequestDetailsPage() {
   const [reviewRating, setReviewRating] = useState(5);
   const [reviewComment, setReviewComment] = useState('');
 
-  const requestRef = useMemoFirebase(() => firestore ? doc(firestore, 'maintenanceRequests', requestId as string) : null, [firestore, requestId]);
+  const requestRef = useMemoFirebase(() => {
+    if (!firestore || !requestId || !user) return null;
+    return doc(firestore, 'maintenanceRequests', requestId as string);
+  }, [firestore, requestId, user]);
+  
   const { data: request, isLoading: requestLoading } = useDoc(requestRef);
 
   const bidsQuery = useMemoFirebase(() => {
-    if (!firestore || !requestId) return null;
+    if (!firestore || !requestId || !user) return null;
     return query(collection(firestore, 'maintenanceRequests', requestId as string, 'bids'));
-  }, [firestore, requestId]);
+  }, [firestore, requestId, user]);
   
   const { data: bids, isLoading: bidsLoading } = useCollection(bidsQuery);
 
@@ -69,20 +73,17 @@ export default function RequestDetailsPage() {
   const handleAcceptBid = (bid: any) => {
     if (!firestore || !request) return;
 
-    // تحديث حالة الطلب وإسناد المهندس
     updateDocumentNonBlocking(doc(firestore, 'maintenanceRequests', request.id), {
       status: 'assigned',
       assignedEngineerId: bid.engineerId,
       updatedAt: serverTimestamp(),
     });
 
-    // تحديث حالة العرض
     updateDocumentNonBlocking(doc(firestore, 'maintenanceRequests', request.id, 'bids', bid.id), {
       status: 'accepted',
       updatedAt: serverTimestamp(),
     });
 
-    // إرسال إشعار للمهندس (اختياري في الـ MVP)
     addDocumentNonBlocking(collection(firestore, 'users', bid.engineerId, 'notifications'), {
       message: `تم قبول عرضك لطلب: ${request.title}`,
       type: 'bid_accepted',
@@ -104,7 +105,6 @@ export default function RequestDetailsPage() {
       updatedAt: serverTimestamp(),
     });
 
-    // إضافة التقييم
     addDocumentNonBlocking(collection(firestore, 'reviews'), {
       requestId: request.id,
       hospitalId: user?.uid,
