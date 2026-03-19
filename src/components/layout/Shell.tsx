@@ -15,14 +15,15 @@ import {
   LogOut,
   Users,
   ShieldCheck,
-  Settings
+  Settings,
+  Check
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useUser, useAuth, useFirestore, useCollection, useMemoFirebase, useDoc } from '@/firebase';
 import { signOut } from 'firebase/auth';
-import { collection, query, orderBy, limit, doc } from 'firebase/firestore';
+import { collection, query, orderBy, limit, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -31,6 +32,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
 interface ShellProps {
   children: React.ReactNode;
@@ -81,6 +83,13 @@ export function Shell({ children }: ShellProps) {
     }
   };
 
+  const markAsRead = (notifId: string) => {
+    if (!firestore || !user) return;
+    updateDocumentNonBlocking(doc(firestore, 'users', user.uid, 'notifications', notifId), {
+      isRead: true
+    });
+  };
+
   const getNavItems = () => {
     switch(userRole) {
       case 'admin':
@@ -108,6 +117,7 @@ export function Shell({ children }: ShellProps) {
   };
 
   const navItems = getNavItems();
+  const unreadCount = notifications?.filter(n => !n.isRead).length || 0;
 
   if (isUserLoading) {
     return (
@@ -137,7 +147,7 @@ export function Shell({ children }: ShellProps) {
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon" className="relative hover:bg-muted rounded-full transition-colors">
                   <Bell className="h-5 w-5" />
-                  {notifications && notifications.length > 0 && (
+                  {unreadCount > 0 && (
                     <span className="absolute top-2 right-2 h-2.5 w-2.5 bg-destructive rounded-full border-2 border-white animate-pulse"></span>
                   )}
                 </Button>
@@ -147,9 +157,19 @@ export function Shell({ children }: ShellProps) {
                 <DropdownMenuSeparator />
                 {notifications && notifications.length > 0 ? (
                   notifications.map((notif) => (
-                    <DropdownMenuItem key={notif.id} className="flex flex-col items-start gap-1 p-3 cursor-pointer rounded-xl hover:bg-muted transition-colors text-right">
-                      <p className="text-sm font-medium w-full">{notif.message}</p>
-                      <span className="text-[10px] text-muted-foreground">
+                    <DropdownMenuItem 
+                      key={notif.id} 
+                      className={cn(
+                        "flex flex-col items-start gap-1 p-3 cursor-pointer rounded-xl transition-colors text-right relative",
+                        !notif.isRead ? "bg-primary/5 hover:bg-primary/10" : "hover:bg-muted"
+                      )}
+                      onClick={() => markAsRead(notif.id)}
+                    >
+                      <div className="flex items-center justify-between w-full">
+                        {!notif.isRead && <span className="h-2 w-2 bg-primary rounded-full" />}
+                        <p className={cn("text-sm w-full", !notif.isRead && "font-bold")}>{notif.message}</p>
+                      </div>
+                      <span className="text-[10px] text-muted-foreground mr-auto">
                         {notif.createdAt?.toDate?.()?.toLocaleTimeString('ar-SA')}
                       </span>
                     </DropdownMenuItem>
@@ -175,7 +195,7 @@ export function Shell({ children }: ShellProps) {
               <DropdownMenuContent align="end" className="w-64 rounded-2xl p-2 shadow-2xl" dir="rtl">
                 <DropdownMenuLabel className="px-3 py-3 text-right">
                   <div className="flex flex-col space-y-1">
-                    <p className="text-sm font-black leading-none">{profile?.fullName || profile?.hospitalName || userRole === 'admin' ? 'مدير النظام' : user?.email}</p>
+                    <p className="text-sm font-black leading-none">{profile?.fullName || profile?.hospitalName || (userRole === 'admin' ? 'مدير النظام' : user?.email)}</p>
                     <p className="text-[10px] leading-none text-muted-foreground capitalize mt-1">
                       {userRole === 'hospital' ? 'مستشفى مسجل' : userRole === 'engineer' ? 'مهندس معتمد' : 'إدارة عليا'}
                     </p>

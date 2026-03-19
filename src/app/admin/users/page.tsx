@@ -4,7 +4,7 @@
 import React, { useState } from 'react';
 import { Shell } from '@/components/layout/Shell';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import { collection, doc, deleteDoc, updateDoc } from 'firebase/firestore';
+import { collection, doc, deleteDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { 
   Table, 
   TableBody, 
@@ -18,13 +18,15 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { 
   Search, 
-  UserX, 
   ShieldCheck, 
   Hospital, 
   Settings,
   Trash2,
   Mail,
-  Calendar
+  Calendar,
+  CheckCircle2,
+  Clock,
+  UserCheck
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -39,6 +41,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
 export default function AdminUsersPage() {
   const firestore = useFirestore();
@@ -52,6 +55,15 @@ export default function AdminUsersPage() {
     u.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     u.role?.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const handleVerifyUser = (userId: string) => {
+    if (!firestore) return;
+    updateDocumentNonBlocking(doc(firestore, 'users', userId), {
+      status: 'verified',
+      updatedAt: serverTimestamp()
+    });
+    toast({ title: "تم توثيق الحساب", description: "يمكن للمستخدم الآن الاستفادة من كافة ميزات المنصة." });
+  };
 
   const handleDeleteUser = async (userId: string) => {
     if (!firestore) return;
@@ -77,7 +89,7 @@ export default function AdminUsersPage() {
       <div className="space-y-6" dir="rtl">
         <div className="text-right">
           <h1 className="text-3xl font-black font-headline text-primary">إدارة المستخدمين</h1>
-          <p className="text-muted-foreground">قائمة بجميع المستخدمين المسجلين في المنصة.</p>
+          <p className="text-muted-foreground">قائمة بجميع المستخدمين المسجلين والتحقق من هويتهم.</p>
         </div>
 
         <div className="relative">
@@ -129,28 +141,49 @@ export default function AdminUsersPage() {
                       </span>
                     </TableCell>
                     <TableCell>
-                      <Badge variant="outline" className="text-green-600 border-green-200 bg-green-50">نشط</Badge>
+                      {user.status === 'verified' ? (
+                        <Badge variant="outline" className="text-green-600 border-green-200 bg-green-50 gap-1">
+                          <CheckCircle2 className="h-3 w-3" /> موثق
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-amber-600 border-amber-200 bg-amber-50 gap-1">
+                          <Clock className="h-3 w-3" /> قيد المراجعة
+                        </Badge>
+                      )}
                     </TableCell>
                     <TableCell className="text-center">
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10 rounded-full">
-                            <Trash2 className="h-4 w-4" />
+                      <div className="flex items-center justify-center gap-2">
+                        {user.status !== 'verified' && (
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="text-primary hover:bg-primary/10 rounded-full"
+                            onClick={() => handleVerifyUser(user.id)}
+                            title="توثيق الحساب"
+                          >
+                            <UserCheck className="h-4 w-4" />
                           </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent dir="rtl">
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>هل أنت متأكد من الحذف؟</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              سيتم حذف حساب {user.email} نهائياً من النظام. لا يمكن التراجع عن هذا الإجراء.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>إلغاء</AlertDialogCancel>
-                            <AlertDialogAction onClick={() => handleDeleteUser(user.id)} className="bg-destructive hover:bg-destructive/90">تأكيد الحذف</AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
+                        )}
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10 rounded-full">
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent dir="rtl">
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>هل أنت متأكد من الحذف؟</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                سيتم حذف حساب {user.email} نهائياً من النظام. لا يمكن التراجع عن هذا الإجراء.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>إلغاء</AlertDialogCancel>
+                              <AlertDialogAction onClick={() => handleDeleteUser(user.id)} className="bg-destructive hover:bg-destructive/90">تأكيد الحذف</AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))
