@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState } from 'react';
@@ -31,6 +30,7 @@ import { addDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase/no
 import { useToast } from '@/hooks/use-toast';
 import { analyzeBids } from '@/ai/flows/analyze-bids';
 import { troubleshootDevice, type TroubleshootOutput } from '@/ai/flows/troubleshoot-device';
+import { generateBidDescription } from '@/ai/flows/generate-bid-description';
 import {
   Dialog,
   DialogContent,
@@ -54,6 +54,7 @@ export default function RequestDetailsPage() {
   const [isSubmittingBid, setIsSubmittingBid] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isTroubleshooting, setIsTroubleshooting] = useState(false);
+  const [isGeneratingBidAI, setIsGeneratingBidAI] = useState(false);
   const [aiAnalysis, setAiAnalysis] = useState<any>(null);
   const [troubleshootResult, setTroubleshootResult] = useState<TroubleshootOutput | null>(null);
   const [reviewRating, setReviewRating] = useState(5);
@@ -72,12 +73,9 @@ export default function RequestDetailsPage() {
     if (!firestore || !requestId || !user || !request) return null;
     const bidsCol = collection(firestore, 'maintenanceRequests', requestId as string, 'bids');
     
-    // Authorization Independence: Use filters that match security rules
     if (user.uid === request.hospitalId) {
-      // Hospital sees all bids for their request
       return query(bidsCol, where('hospitalId', '==', user.uid));
     } else {
-      // Engineers see only their own bids
       return query(bidsCol, where('engineerId', '==', user.uid));
     }
   }, [firestore, requestId, user?.uid, request?.hospitalId]);
@@ -174,6 +172,24 @@ export default function RequestDetailsPage() {
     }
   }
 
+  async function handleGenerateAIBid() {
+    if (!request) return;
+    setIsGeneratingBidAI(true);
+    try {
+      const result = await generateBidDescription({
+        requestTitle: request.title,
+        requestDescription: request.description,
+        engineerNotes: bidDesc
+      });
+      setBidDesc(result.professionalDescription);
+      toast({ title: "تم توليد العرض", description: "قام المساعد الذكي بصياغة عرض تقني احترافي لك." });
+    } catch (error) {
+      toast({ variant: "destructive", title: "خطأ", description: "فشل توليد العرض الذكي." });
+    } finally {
+      setIsGeneratingBidAI(false);
+    }
+  }
+
   function handleSendBid() {
     if (!user || !requestId || !firestore || !request) return;
     setIsSubmittingBid(true);
@@ -181,7 +197,7 @@ export default function RequestDetailsPage() {
     addDocumentNonBlocking(bidsCol, {
       engineerId: user.uid,
       requestId: requestId,
-      hospitalId: request.hospitalId, // Denormalize hospitalId for security rules
+      hospitalId: request.hospitalId,
       price: Number(bidPrice),
       estimatedDays: Number(bidDays),
       description: bidDesc,
@@ -281,60 +297,60 @@ export default function RequestDetailsPage() {
               </CardContent>
             </Card>
 
-            {(isOwner || !isOwner) && request.status === 'open' && (
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  {isOwner && bids && bids.length > 0 && (
-                    <Button onClick={handleAnalyzeBids} disabled={isAnalyzing} variant="outline" className="gap-2 bg-secondary/10">
-                      {isAnalyzing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-                      تحليل العروض بالذكاء الاصطناعي
-                    </Button>
-                  )}
-                  <h2 className="text-xl font-bold">{isOwner ? `العروض المستلمة (${bids?.length || 0})` : 'عروضك لهذا الطلب'}</h2>
-                </div>
-
-                {isOwner && aiAnalysis && (
-                  <Card className="bg-primary/5 border-primary/20 space-y-3 p-6 rounded-2xl">
-                    <p className="font-bold text-primary flex items-center gap-2 justify-end"><Sparkles className="h-4 w-4" /> توصية الذكاء الاصطناعي:</p>
-                    <div className="bg-white p-4 rounded-xl shadow-sm text-right">
-                      <p className="font-black text-lg">{aiAnalysis.bestOption.engineerName}</p>
-                      <p className="text-sm text-muted-foreground mt-1">{aiAnalysis.bestOption.reason}</p>
-                      <div className="mt-4 p-3 bg-amber-50 rounded-lg text-xs text-amber-800 border border-amber-100">
-                        <strong>تحليل المخاطر:</strong> {aiAnalysis.riskAnalysis}
-                      </div>
-                    </div>
-                  </Card>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                {isOwner && bids && bids.length > 0 && (
+                  <Button onClick={handleAnalyzeBids} disabled={isAnalyzing} variant="outline" className="gap-2 bg-secondary/10">
+                    {isAnalyzing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                    تحليل العروض بالذكاء الاصطناعي
+                  </Button>
                 )}
-
-                <div className="space-y-4">
-                  {bids?.map(bid => (
-                    <Card key={bid.id} className="hover:shadow-lg transition-shadow overflow-hidden border-none shadow-sm">
-                      <CardContent className="p-6">
-                        <div className="flex justify-between items-start gap-4">
-                          <div className="flex-1 text-right">
-                            <div className="flex items-center gap-2 mb-2 justify-end">
-                              <span className="font-bold">{bid.engineerId === user?.uid ? 'عرضك الحالي' : 'مهندس صيانة معتمد'}</span>
-                              <User className="h-4 w-4 text-primary" />
-                            </div>
-                            <p className="text-sm text-muted-foreground leading-relaxed">{bid.description}</p>
-                            <p className="mt-4 text-primary font-black text-2xl">{bid.price} ر.س</p>
-                          </div>
-                          <div className="text-left space-y-3">
-                            <Badge variant="outline" className="px-3 py-1">{bid.estimatedDays} أيام عمل</Badge>
-                            {isOwner && <Button size="lg" className="w-full rounded-xl shadow-md" onClick={() => handleAcceptBid(bid)}>قبول العرض</Button>}
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                  {(!bids || bids.length === 0) && (
-                    <div className="text-center py-12 bg-muted/20 rounded-3xl border-2 border-dashed">
-                      <p className="text-muted-foreground">{isOwner ? 'في انتظار عروض المهندسين...' : 'لم تقدم عرضاً لهذا الطلب بعد.'}</p>
-                    </div>
-                  )}
-                </div>
+                <h2 className="text-xl font-bold">{isOwner ? `العروض المستلمة (${bids?.length || 0})` : 'عروضك لهذا الطلب'}</h2>
               </div>
-            )}
+
+              {isOwner && aiAnalysis && (
+                <Card className="bg-primary/5 border-primary/20 space-y-3 p-6 rounded-2xl">
+                  <p className="font-bold text-primary flex items-center gap-2 justify-end"><Sparkles className="h-4 w-4" /> توصية الذكاء الاصطناعي:</p>
+                  <div className="bg-white p-4 rounded-xl shadow-sm text-right">
+                    <p className="font-black text-lg">{aiAnalysis.bestOption.engineerName}</p>
+                    <p className="text-sm text-muted-foreground mt-1">{aiAnalysis.bestOption.reason}</p>
+                    <div className="mt-4 p-3 bg-amber-50 rounded-lg text-xs text-amber-800 border border-amber-100">
+                      <strong>تحليل المخاطر:</strong> {aiAnalysis.riskAnalysis}
+                    </div>
+                  </div>
+                </Card>
+              )}
+
+              <div className="space-y-4">
+                {bids?.map(bid => (
+                  <Card key={bid.id} className="hover:shadow-lg transition-shadow overflow-hidden border-none shadow-sm">
+                    <CardContent className="p-6">
+                      <div className="flex justify-between items-start gap-4">
+                        <div className="flex-1 text-right">
+                          <div className="flex items-center gap-2 mb-2 justify-end">
+                            <span className="font-bold">{bid.engineerId === user?.uid ? 'عرضك الحالي' : 'مهندس صيانة معتمد'}</span>
+                            <User className="h-4 w-4 text-primary" />
+                          </div>
+                          <p className="text-sm text-muted-foreground leading-relaxed">{bid.description}</p>
+                          <p className="mt-4 text-primary font-black text-2xl">{bid.price} ر.س</p>
+                        </div>
+                        <div className="text-left space-y-3">
+                          <Badge variant="outline" className="px-3 py-1">{bid.estimatedDays} أيام عمل</Badge>
+                          {isOwner && request.status === 'open' && (
+                            <Button size="lg" className="w-full rounded-xl shadow-md" onClick={() => handleAcceptBid(bid)}>قبول العرض</Button>
+                          )}
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+                {(!bids || bids.length === 0) && (
+                  <div className="text-center py-12 bg-muted/20 rounded-3xl border-2 border-dashed">
+                    <p className="text-muted-foreground">{isOwner ? 'في انتظار عروض المهندسين...' : 'لم تقدم عرضاً لهذا الطلب بعد.'}</p>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
 
           <div className="space-y-6">
@@ -351,8 +367,27 @@ export default function RequestDetailsPage() {
                     <Input type="number" placeholder="مثال: 3" value={bidDays} onChange={(e) => setBidDays(e.target.value)} className="h-12 rounded-xl" />
                   </div>
                   <div className="space-y-2">
-                    <Label>تفاصيل العرض التقنية</Label>
-                    <Textarea placeholder="اشرح كيف ستقوم بالإصلاح..." value={bidDesc} onChange={(e) => setBidDesc(e.target.value)} className="min-h-[120px] rounded-xl" />
+                    <div className="flex items-center justify-between">
+                      <Button 
+                        type="button" 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={handleGenerateAIBid}
+                        disabled={isGeneratingBidAI}
+                        className="text-secondary-foreground bg-secondary/10 hover:bg-secondary/20 border-secondary/50 flex items-center gap-1 h-8"
+                      >
+                        {isGeneratingBidAI ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
+                        صياغة ذكية للعرض
+                      </Button>
+                      <Label>تفاصيل العرض التقنية</Label>
+                    </div>
+                    <Textarea 
+                      placeholder="اشرح خطتك التقنية للإصلاح..." 
+                      value={bidDesc} 
+                      onChange={(e) => setBidDesc(e.target.value)} 
+                      className="min-h-[120px] rounded-xl" 
+                    />
+                    <p className="text-[10px] text-muted-foreground">يمكنك كتابة ملاحظات بسيطة ثم الضغط على الصياغة الذكية لتحويلها لعرض احترافي.</p>
                   </div>
                   <Button className="w-full h-14 text-lg rounded-2xl shadow-xl shadow-primary/20 mt-4" onClick={handleSendBid} disabled={isSubmittingBid || !bidPrice || !bidDays}>
                     {isSubmittingBid ? <Loader2 className="h-4 w-4 animate-spin" /> : 'إرسال عرضي الآن'}
