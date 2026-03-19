@@ -16,14 +16,15 @@ import {
   Users,
   ShieldCheck,
   Settings,
-  Check
+  Check,
+  Briefcase
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useUser, useAuth, useFirestore, useCollection, useMemoFirebase, useDoc } from '@/firebase';
 import { signOut } from 'firebase/auth';
-import { collection, query, orderBy, limit, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, query, orderBy, limit, doc, serverTimestamp } from 'firebase/firestore';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -65,7 +66,7 @@ export function Shell({ children }: ShellProps) {
     return query(
       collection(firestore, 'users', user.uid, 'notifications'),
       orderBy('createdAt', 'desc'),
-      limit(5)
+      limit(10)
     );
   }, [firestore, user?.uid]);
   const { data: notifications } = useCollection(notificationsQuery);
@@ -97,7 +98,7 @@ export function Shell({ children }: ShellProps) {
           { name: 'الرئيسية', icon: LayoutDashboard, href: '/dashboard' },
           { name: 'المستخدمين', icon: Users, href: '/admin/users' },
           { name: 'الطلبات', icon: ClipboardList, href: '/admin/requests' },
-          { name: 'الإعدادات', icon: Settings, href: '/profile' },
+          { name: 'الملف الشخصي', icon: Settings, href: '/profile' },
         ];
       case 'hospital':
         return [
@@ -110,7 +111,7 @@ export function Shell({ children }: ShellProps) {
         return [
           { name: 'الرئيسية', icon: LayoutDashboard, href: '/dashboard' },
           { name: 'استكشاف', icon: Search, href: '/explore' },
-          { name: 'عروضي', icon: ClipboardList, href: '/bids' },
+          { name: 'عروضي', icon: Briefcase, href: '/bids' },
           { name: 'الملف الشخصي', icon: User, href: '/profile' },
         ];
     }
@@ -153,36 +154,44 @@ export function Shell({ children }: ShellProps) {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-80 rounded-2xl p-2 shadow-2xl" dir="rtl">
-                <DropdownMenuLabel className="font-bold px-3 py-2 text-right">الإشعارات الأخيرة</DropdownMenuLabel>
+                <DropdownMenuLabel className="font-bold px-3 py-2 text-right flex justify-between items-center">
+                  <span>الإشعارات الأخيرة</span>
+                  {unreadCount > 0 && <span className="bg-destructive/10 text-destructive text-[10px] px-2 py-0.5 rounded-full">{unreadCount} جديد</span>}
+                </DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                {notifications && notifications.length > 0 ? (
-                  notifications.map((notif) => (
-                    <DropdownMenuItem 
-                      key={notif.id} 
-                      className={cn(
-                        "flex flex-col items-start gap-1 p-3 cursor-pointer rounded-xl transition-colors text-right relative",
-                        !notif.isRead ? "bg-primary/5 hover:bg-primary/10" : "hover:bg-muted"
-                      )}
-                      onClick={() => markAsRead(notif.id)}
-                    >
-                      <div className="flex items-center justify-between w-full">
-                        {!notif.isRead && <span className="h-2 w-2 bg-primary rounded-full" />}
-                        <p className={cn("text-sm w-full", !notif.isRead && "font-bold")}>{notif.message}</p>
-                      </div>
-                      <span className="text-[10px] text-muted-foreground mr-auto">
-                        {notif.createdAt?.toDate?.()?.toLocaleTimeString('ar-SA')}
-                      </span>
-                    </DropdownMenuItem>
-                  ))
-                ) : (
-                  <div className="p-8 text-center text-sm text-muted-foreground">لا توجد إشعارات حالياً.</div>
-                )}
+                <div className="max-h-[350px] overflow-y-auto">
+                  {notifications && notifications.length > 0 ? (
+                    notifications.map((notif) => (
+                      <DropdownMenuItem 
+                        key={notif.id} 
+                        className={cn(
+                          "flex flex-col items-start gap-1 p-3 cursor-pointer rounded-xl transition-colors text-right relative mb-1",
+                          !notif.isRead ? "bg-primary/5 hover:bg-primary/10" : "hover:bg-muted"
+                        )}
+                        onClick={() => markAsRead(notif.id)}
+                      >
+                        <div className="flex items-start justify-between w-full gap-2">
+                          <p className={cn("text-xs leading-relaxed", !notif.isRead ? "font-bold text-foreground" : "text-muted-foreground")}>{notif.message}</p>
+                          {!notif.isRead && <div className="h-2 w-2 bg-primary rounded-full shrink-0 mt-1" />}
+                        </div>
+                        <span className="text-[9px] text-muted-foreground mr-auto mt-1">
+                          {notif.createdAt?.toDate?.()?.toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      </DropdownMenuItem>
+                    ))
+                  ) : (
+                    <div className="p-12 text-center text-sm text-muted-foreground flex flex-col items-center gap-2">
+                      <Bell className="h-8 w-8 opacity-10" />
+                      لا توجد إشعارات حالياً.
+                    </div>
+                  )}
+                </div>
               </DropdownMenuContent>
             </DropdownMenu>
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="relative h-10 w-10 rounded-full p-0 ring-2 ring-primary/10 hover:ring-primary/40 transition-all overflow-hidden">
+                <Button variant="ghost" className="relative h-10 w-10 rounded-full p-0 ring-2 ring-primary/10 hover:ring-primary/40 transition-all overflow-hidden shadow-sm">
                   <Avatar className="h-full w-full">
                     <AvatarImage 
                       src={currentProfileImage} 
@@ -203,14 +212,14 @@ export function Shell({ children }: ShellProps) {
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
-                  <Link href="/profile" className="cursor-pointer flex items-center gap-2 p-3 rounded-xl hover:bg-muted transition-colors justify-end">
-                    <span>الملف الشخصي</span>
-                    <User className="h-4 w-4" />
+                  <Link href="/profile" className="cursor-pointer flex items-center gap-2 p-3 rounded-xl hover:bg-muted transition-colors justify-end group">
+                    <span className="group-hover:text-primary">الملف الشخصي</span>
+                    <User className="h-4 w-4 group-hover:text-primary" />
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleLogout} className="text-destructive cursor-pointer flex items-center gap-2 p-3 rounded-xl hover:bg-destructive/10 transition-colors justify-end">
-                  <span>تسجيل الخروج</span>
+                <DropdownMenuItem onClick={handleLogout} className="text-destructive cursor-pointer flex items-center gap-2 p-3 rounded-xl hover:bg-destructive/10 transition-colors justify-end group">
+                  <span className="font-bold">تسجيل الخروج</span>
                   <LogOut className="h-4 w-4" />
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -219,14 +228,14 @@ export function Shell({ children }: ShellProps) {
         </div>
       </header>
 
-      <main className="flex-1 pb-20 md:pb-12">
+      <main className="flex-1 pb-24 md:pb-12">
         <div className="container px-6 py-8 mx-auto">
           {children}
         </div>
       </main>
 
-      <nav className="fixed bottom-4 left-4 right-4 z-50 border bg-white/90 backdrop-blur-xl md:hidden rounded-2xl shadow-2xl border-white/20">
-        <div className="flex justify-around items-center h-16">
+      <nav className="fixed bottom-6 left-6 right-6 z-50 border bg-white/90 backdrop-blur-xl md:hidden rounded-[2rem] shadow-2xl border-white/20">
+        <div className="flex justify-around items-center h-16 px-2">
           {navItems.map((item) => {
             const isActive = pathname === item.href;
             return (
@@ -234,12 +243,12 @@ export function Shell({ children }: ShellProps) {
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  "flex flex-col items-center justify-center flex-1 gap-1 transition-all",
-                  isActive ? "text-primary font-bold scale-110" : "text-muted-foreground/60"
+                  "flex flex-col items-center justify-center flex-1 gap-1 transition-all rounded-2xl h-12",
+                  isActive ? "text-primary font-bold bg-primary/5" : "text-muted-foreground/60 hover:text-primary/60"
                 )}
               >
-                <item.icon className={cn("h-5 w-5", isActive && "text-primary")} />
-                <span className="text-[10px]">{item.name}</span>
+                <item.icon className={cn("h-5 w-5", isActive && "scale-110")} />
+                <span className="text-[9px]">{item.name}</span>
               </Link>
             );
           })}
@@ -248,3 +257,4 @@ export function Shell({ children }: ShellProps) {
     </div>
   );
 }
+

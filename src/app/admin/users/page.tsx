@@ -4,7 +4,7 @@
 import React, { useState } from 'react';
 import { Shell } from '@/components/layout/Shell';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import { collection, doc, deleteDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, doc, deleteDoc, serverTimestamp } from 'firebase/firestore';
 import { 
   Table, 
   TableBody, 
@@ -26,7 +26,8 @@ import {
   Calendar,
   CheckCircle2,
   Clock,
-  UserCheck
+  UserCheck,
+  AlertTriangle
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -62,124 +63,129 @@ export default function AdminUsersPage() {
       status: 'verified',
       updatedAt: serverTimestamp()
     });
-    toast({ title: "تم توثيق الحساب", description: "يمكن للمستخدم الآن الاستفادة من كافة ميزات المنصة." });
+    toast({ title: "تم توثيق الحساب", description: "يمكن للمستخدم الآن استخدام كافة ميزات المنصة كعضو موثق." });
   };
 
   const handleDeleteUser = async (userId: string) => {
     if (!firestore) return;
     try {
       await deleteDoc(doc(firestore, 'users', userId));
-      toast({ title: "تم حذف المستخدم", description: "تمت إزالة الحساب من النظام بنجاح." });
+      toast({ title: "تم حذف المستخدم", description: "تمت إزالة الحساب والبيانات المرتبطة من النظام." });
     } catch (error) {
-      toast({ variant: "destructive", title: "خطأ", description: "فشل حذف المستخدم." });
+      toast({ variant: "destructive", title: "خطأ", description: "فشل حذف المستخدم، يرجى المحاولة لاحقاً." });
     }
   };
 
   const getRoleBadge = (role: string) => {
     switch (role) {
-      case 'admin': return <Badge className="bg-purple-100 text-purple-700 hover:bg-purple-100 gap-1"><Settings className="h-3 w-3" /> مدير</Badge>;
-      case 'hospital': return <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-100 gap-1"><Hospital className="h-3 w-3" /> مستشفى</Badge>;
-      case 'engineer': return <Badge className="bg-green-100 text-green-700 hover:bg-green-100 gap-1"><ShieldCheck className="h-3 w-3" /> مهندس</Badge>;
-      default: return <Badge variant="outline">{role}</Badge>;
+      case 'admin': return <Badge className="bg-purple-100 text-purple-700 border-purple-200 gap-1.5 px-3 py-1"><Settings className="h-3 w-3" /> مدير نظام</Badge>;
+      case 'hospital': return <Badge className="bg-blue-100 text-blue-700 border-blue-200 gap-1.5 px-3 py-1"><Hospital className="h-3 w-3" /> مستشفى</Badge>;
+      case 'engineer': return <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 gap-1.5 px-3 py-1"><ShieldCheck className="h-3 w-3" /> مهندس معتمد</Badge>;
+      default: return <Badge variant="outline" className="px-3 py-1">{role}</Badge>;
     }
   };
 
   return (
     <Shell>
-      <div className="space-y-6" dir="rtl">
-        <div className="text-right">
-          <h1 className="text-3xl font-black font-headline text-primary">إدارة المستخدمين</h1>
-          <p className="text-muted-foreground">قائمة بجميع المستخدمين المسجلين والتحقق من هويتهم.</p>
+      <div className="space-y-8" dir="rtl">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 text-right">
+          <div>
+            <h1 className="text-3xl font-black font-headline text-primary tracking-tight">إدارة المستخدمين</h1>
+            <p className="text-muted-foreground">التحكم في العضويات، توثيق الحسابات، ومراقبة نشاط المنصة.</p>
+          </div>
+          <div className="bg-amber-100 text-amber-800 px-4 py-2 rounded-2xl text-xs font-bold flex items-center gap-2 border border-amber-200">
+            <AlertTriangle className="h-4 w-4" />
+            <span>يتطلب توثيق الحسابات مراجعة الهوية المهنية</span>
+          </div>
         </div>
 
-        <div className="relative">
-          <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <div className="relative group">
+          <Search className="absolute right-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground group-focus-within:text-primary transition-colors" />
           <Input 
-            placeholder="ابحث بالبريد الإلكتروني أو الدور..." 
-            className="pr-10 h-12 rounded-xl text-right"
+            placeholder="ابحث بالبريد الإلكتروني أو الدور الوظيفي..." 
+            className="pr-12 h-14 rounded-2xl text-right shadow-sm border-2 focus:border-primary/50 transition-all"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
 
-        <div className="bg-white rounded-3xl shadow-xl overflow-hidden border">
+        <div className="bg-white rounded-[2.5rem] shadow-2xl overflow-hidden border-none">
           <Table>
-            <TableHeader className="bg-muted/50">
-              <TableRow>
-                <TableHead className="text-right">المستخدم</TableHead>
-                <TableHead className="text-right">الدور</TableHead>
-                <TableHead className="text-right">تاريخ الانضمام</TableHead>
-                <TableHead className="text-right">الحالة</TableHead>
-                <TableHead className="text-center">إجراءات</TableHead>
+            <TableHeader className="bg-muted/30">
+              <TableRow className="hover:bg-transparent border-b-2">
+                <TableHead className="text-right py-6 font-black text-foreground">معلومات المستخدم</TableHead>
+                <TableHead className="text-right py-6 font-black text-foreground">الدور الوظيفي</TableHead>
+                <TableHead className="text-right py-6 font-black text-foreground">تاريخ الانضمام</TableHead>
+                <TableHead className="text-right py-6 font-black text-foreground">حالة التوثيق</TableHead>
+                <TableHead className="text-center py-6 font-black text-foreground">التحكم</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
                 [1, 2, 3, 4, 5].map(i => (
                   <TableRow key={i}>
-                    <TableCell><Skeleton className="h-4 w-32" /></TableCell>
-                    <TableCell><Skeleton className="h-4 w-20" /></TableCell>
-                    <TableCell><Skeleton className="h-4 w-24" /></TableCell>
-                    <TableCell><Skeleton className="h-4 w-16" /></TableCell>
-                    <TableCell><Skeleton className="h-8 w-8 mx-auto rounded-full" /></TableCell>
+                    <TableCell><Skeleton className="h-5 w-40 rounded-lg" /></TableCell>
+                    <TableCell><Skeleton className="h-6 w-24 rounded-full" /></TableCell>
+                    <TableCell><Skeleton className="h-5 w-24 rounded-lg" /></TableCell>
+                    <TableCell><Skeleton className="h-6 w-16 rounded-full" /></TableCell>
+                    <TableCell><Skeleton className="h-10 w-24 mx-auto rounded-xl" /></TableCell>
                   </TableRow>
                 ))
               ) : (
                 filteredUsers?.map(user => (
-                  <TableRow key={user.id} className="hover:bg-muted/30 transition-colors">
-                    <TableCell className="font-medium">
-                      <div className="flex flex-col">
-                        <span className="flex items-center gap-1"><Mail className="h-3 w-3 opacity-50" /> {user.email}</span>
-                        <span className="text-[10px] text-muted-foreground">ID: {user.id}</span>
+                  <TableRow key={user.id} className="hover:bg-primary/5 transition-all group">
+                    <TableCell className="py-4">
+                      <div className="flex flex-col gap-1">
+                        <span className="flex items-center gap-2 font-bold"><Mail className="h-3.5 w-3.5 text-primary/60" /> {user.email}</span>
+                        <span className="text-[10px] text-muted-foreground font-code opacity-60">UID: {user.id}</span>
                       </div>
                     </TableCell>
-                    <TableCell>{getRoleBadge(user.role)}</TableCell>
-                    <TableCell>
-                      <span className="flex items-center gap-1 text-xs">
-                        <Calendar className="h-3 w-3 opacity-50" />
+                    <TableCell className="py-4">{getRoleBadge(user.role)}</TableCell>
+                    <TableCell className="py-4">
+                      <span className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+                        <Calendar className="h-3.5 w-3.5" />
                         {user.createdAt ? new Date(user.createdAt).toLocaleDateString('ar-SA') : '---'}
                       </span>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="py-4">
                       {user.status === 'verified' ? (
-                        <Badge variant="outline" className="text-green-600 border-green-200 bg-green-50 gap-1">
-                          <CheckCircle2 className="h-3 w-3" /> موثق
-                        </Badge>
+                        <div className="flex items-center gap-1.5 text-emerald-600 font-bold text-xs bg-emerald-50 px-3 py-1 rounded-full w-fit">
+                          <CheckCircle2 className="h-3.5 w-3.5" /> موثق
+                        </div>
                       ) : (
-                        <Badge variant="outline" className="text-amber-600 border-amber-200 bg-amber-50 gap-1">
-                          <Clock className="h-3 w-3" /> قيد المراجعة
-                        </Badge>
+                        <div className="flex items-center gap-1.5 text-amber-600 font-bold text-xs bg-amber-50 px-3 py-1 rounded-full w-fit">
+                          <Clock className="h-3.5 w-3.5" /> قيد المراجعة
+                        </div>
                       )}
                     </TableCell>
-                    <TableCell className="text-center">
-                      <div className="flex items-center justify-center gap-2">
+                    <TableCell className="py-4 text-center">
+                      <div className="flex items-center justify-center gap-3">
                         {user.status !== 'verified' && (
                           <Button 
                             variant="ghost" 
-                            size="icon" 
-                            className="text-primary hover:bg-primary/10 rounded-full"
+                            size="sm" 
+                            className="text-primary hover:bg-primary/10 rounded-xl gap-2 h-9 px-4 font-bold border border-primary/20"
                             onClick={() => handleVerifyUser(user.id)}
-                            title="توثيق الحساب"
                           >
-                            <UserCheck className="h-4 w-4" />
+                            <UserCheck className="h-4 w-4" /> توثيق
                           </Button>
                         )}
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
-                            <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10 rounded-full">
+                            <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10 rounded-xl h-9 w-9">
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           </AlertDialogTrigger>
-                          <AlertDialogContent dir="rtl">
+                          <AlertDialogContent dir="rtl" className="rounded-[2rem] p-8">
                             <AlertDialogHeader>
-                              <AlertDialogTitle>هل أنت متأكد من الحذف؟</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                سيتم حذف حساب {user.email} نهائياً من النظام. لا يمكن التراجع عن هذا الإجراء.
+                              <AlertDialogTitle className="text-right text-2xl font-black">تأكيد حذف الحساب</AlertDialogTitle>
+                              <AlertDialogDescription className="text-right text-lg mt-2">
+                                أنت على وشك حذف حساب <span className="font-bold text-foreground">{user.email}</span> بشكل نهائي. سيؤدي هذا لإزالة كافة البيانات والطلبات المرتبطة بهذا الحساب.
                               </AlertDialogDescription>
                             </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>إلغاء</AlertDialogCancel>
-                              <AlertDialogAction onClick={() => handleDeleteUser(user.id)} className="bg-destructive hover:bg-destructive/90">تأكيد الحذف</AlertDialogAction>
+                            <AlertDialogFooter className="mt-8 gap-4">
+                              <AlertDialogCancel className="rounded-xl h-12 flex-1">تراجع عن الإجراء</AlertDialogCancel>
+                              <AlertDialogAction onClick={() => handleDeleteUser(user.id)} className="bg-destructive hover:bg-destructive/90 rounded-xl h-12 flex-1 font-bold">تأكيد الحذف النهائي</AlertDialogAction>
                             </AlertDialogFooter>
                           </AlertDialogContent>
                         </AlertDialog>
@@ -190,8 +196,11 @@ export default function AdminUsersPage() {
               )}
               {filteredUsers?.length === 0 && !isLoading && (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center py-20 text-muted-foreground italic">
-                    لا يوجد مستخدمين مطابقين للبحث.
+                  <TableCell colSpan={5} className="text-center py-32 text-muted-foreground italic bg-muted/5">
+                    <div className="flex flex-col items-center gap-4">
+                      <Search className="h-16 w-16 opacity-10" />
+                      <p className="text-xl">لا يوجد مستخدمون مطابقون لمعايير البحث.</p>
+                    </div>
                   </TableCell>
                 </TableRow>
               )}
@@ -202,3 +211,4 @@ export default function AdminUsersPage() {
     </Shell>
   );
 }
+
