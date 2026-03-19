@@ -83,17 +83,14 @@ export default function RequestDetailsPage() {
     if (!firestore || !requestId || !user || !request) return null;
     const bidsCol = collection(firestore, 'maintenanceRequests', requestId as string, 'bids');
     
-    // Admin can see all bids
     if (isAdmin) {
       return bidsCol;
     }
     
-    // Hospital can see bids for their request
     if (user.uid === request.hospitalId) {
       return query(bidsCol, where('hospitalId', '==', user.uid));
     } 
     
-    // Engineer can only see their own bid for this request
     return query(bidsCol, where('engineerId', '==', user.uid));
   }, [firestore, requestId, user?.uid, request?.hospitalId, isAdmin, request]);
   
@@ -115,7 +112,7 @@ export default function RequestDetailsPage() {
 
     addDocumentNonBlocking(collection(firestore, 'users', bid.engineerId, 'notifications'), {
       userId: bid.engineerId,
-      message: `تم قبول عرضك لطلب: ${request.title}`,
+      message: `تم قبول عرضك لطلب الصيانة: ${request.title}`,
       type: 'bid_accepted',
       isRead: false,
       createdAt: serverTimestamp(),
@@ -146,9 +143,17 @@ export default function RequestDetailsPage() {
         totalJobs: increment(1),
         updatedAt: serverTimestamp(),
       });
+
+      addDocumentNonBlocking(collection(firestore, 'users', request.assignedEngineerId, 'notifications'), {
+        userId: request.assignedEngineerId,
+        message: `تم إكمال وتقييم مهمتك لطلب: ${request.title}`,
+        type: 'job_completed',
+        isRead: false,
+        createdAt: serverTimestamp(),
+      });
     }
 
-    toast({ title: "تم إكمال المهمة", description: "شكراً لتقييمك، تم إغلاق الطلب بنجاح." });
+    toast({ title: "تم إكمال المهمة", description: "تم إغلاق الطلب بنجاح." });
     router.push('/dashboard');
   };
 
@@ -224,6 +229,15 @@ export default function RequestDetailsPage() {
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     });
+
+    addDocumentNonBlocking(collection(firestore, 'users', request.hospitalId, 'notifications'), {
+      userId: request.hospitalId,
+      message: `وصلك عرض صيانة جديد لطلبك: ${request.title}`,
+      type: 'new_bid',
+      isRead: false,
+      createdAt: serverTimestamp(),
+    });
+
     toast({ title: "تم تقديم العرض", description: "تم إرسال عرضك بنجاح." });
     router.push('/dashboard');
   }
@@ -277,10 +291,10 @@ export default function RequestDetailsPage() {
                     </div>
                     <div className="space-y-2 text-right">
                       <Label className="font-bold">ملاحظات إضافية</Label>
-                      <Textarea placeholder="اكتب رأيك في عمل المهندس ومدى جودة الإصلاح..." value={reviewComment} onChange={(e) => setReviewComment(e.target.value)} className="rounded-xl min-h-[100px]" />
+                      <Textarea placeholder="اكتب رأيك في عمل المهندس..." value={reviewComment} onChange={(e) => setReviewComment(e.target.value)} className="rounded-xl min-h-[100px]" />
                     </div>
                   </div>
-                  <DialogFooter><Button onClick={handleCompleteJob} className="w-full h-12 rounded-xl">حفظ وإغلاق الطلب نهائياً</Button></DialogFooter>
+                  <DialogFooter><Button onClick={handleCompleteJob} className="w-full h-12 rounded-xl">حفظ وإغلاق الطلب</Button></DialogFooter>
                 </DialogContent>
               </Dialog>
             )}
@@ -288,33 +302,34 @@ export default function RequestDetailsPage() {
         </div>
 
         {troubleshootResult && (
-          <Card className="bg-blue-50 border-blue-200 animate-in fade-in slide-in-from-top-2 rounded-3xl overflow-hidden shadow-lg border-2">
-            <CardHeader className="bg-blue-100/50 pb-2">
-              <CardTitle className="text-lg flex items-center gap-2 text-blue-800">
-                <Sparkles className="h-5 w-5" /> مساعد التشخيص الذكي
+          <Card className="bg-blue-50 border-blue-200 rounded-3xl overflow-hidden shadow-lg border-2">
+            <CardHeader className="bg-blue-100/50 pb-2 text-right">
+              <CardTitle className="text-lg flex items-center gap-2 text-blue-800 justify-end">
+                <span>مساعد التشخيص الذكي</span>
+                <Sparkles className="h-5 w-5" />
               </CardTitle>
             </CardHeader>
-            <CardContent className="p-6 space-y-4">
+            <CardContent className="p-6 space-y-4 text-right">
               <div className="bg-white p-5 rounded-2xl border border-blue-100 shadow-sm">
                 <p className="font-bold text-blue-900 mb-2">السبب المحتمل: {troubleshootResult.potentialCause}</p>
                 <div className="space-y-3">
                   <p className="text-sm font-medium text-blue-800">خطوات مقترحة:</p>
-                  <ul className="space-y-2 text-sm list-none pr-0 text-right">
+                  <ul className="space-y-2 text-sm pr-0">
                     {troubleshootResult.steps.map((s, i) => (
-                      <li key={i} className="flex items-start gap-2 bg-blue-50/50 p-2 rounded-lg">
-                        <span className="bg-blue-200 text-blue-800 w-5 h-5 rounded-full flex items-center justify-center text-[10px] shrink-0">{i+1}</span>
+                      <li key={i} className="flex items-start gap-2 justify-end">
                         <span>{s}</span>
+                        <span className="bg-blue-200 text-blue-800 w-5 h-5 rounded-full flex items-center justify-center text-[10px] shrink-0">{i+1}</span>
                       </li>
                     ))}
                   </ul>
                 </div>
               </div>
-              <div className="flex items-start gap-3 p-4 bg-amber-50 rounded-2xl border border-amber-200 text-amber-900 text-sm">
-                <ShieldAlert className="h-5 w-5 shrink-0 text-amber-600" />
-                <div>
+              <div className="flex items-start gap-3 p-4 bg-amber-50 rounded-2xl border border-amber-200 text-amber-900 text-sm justify-end">
+                <div className="text-right flex-1">
                   <p className="font-bold mb-1">تنبيه أمان:</p>
                   <p>{troubleshootResult.safetyWarning}</p>
                 </div>
+                <ShieldAlert className="h-5 w-5 shrink-0 text-amber-600 mt-1" />
               </div>
             </CardContent>
           </Card>
@@ -323,41 +338,37 @@ export default function RequestDetailsPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 space-y-6">
             <Card className="border-none shadow-xl rounded-3xl overflow-hidden">
-              <CardHeader className="bg-muted/30 border-b">
-                <CardTitle className="text-xl font-bold">تفاصيل العطل الفنية</CardTitle>
+              <CardHeader className="bg-muted/30 border-b text-right">
+                <CardTitle className="text-xl font-bold">وصف العطل</CardTitle>
               </CardHeader>
-              <CardContent className="p-8">
-                <p className="text-muted-foreground whitespace-pre-wrap leading-relaxed text-right text-lg">{request.description}</p>
-                <div className="flex flex-wrap gap-6 mt-8 pt-6 border-t text-sm text-muted-foreground justify-end">
-                  <span className="flex items-center gap-2 bg-muted px-3 py-1 rounded-full"><Calendar className="h-4 w-4" /> تم النشر: {request.createdAt?.toDate?.()?.toLocaleDateString('ar-SA') || 'اليوم'}</span>
-                  <span className="flex items-center gap-2 bg-muted px-3 py-1 rounded-full"><Clock className="h-4 w-4" /> الأولوية: {request.urgency}</span>
+              <CardContent className="p-8 text-right">
+                <p className="text-muted-foreground whitespace-pre-wrap leading-relaxed text-lg">{request.description}</p>
+                <div className="flex flex-wrap gap-4 mt-8 pt-6 border-t text-sm text-muted-foreground justify-end">
+                  <Badge variant="secondary" className="gap-1"><Calendar className="h-3 w-3" /> تم النشر: {request.createdAt ? new Date(request.createdAt).toLocaleDateString('ar-SA') : 'اليوم'}</Badge>
+                  <Badge variant="secondary" className="gap-1"><Clock className="h-3 w-3" /> الأولوية: {request.urgency}</Badge>
                 </div>
               </CardContent>
             </Card>
 
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
+            <div className="space-y-4 text-right">
+              <div className="flex items-center justify-between flex-row-reverse">
+                <h2 className="text-2xl font-black">{isOwner || isAdmin ? `العروض المتاحة (${bids?.length || 0})` : 'عروضك لهذا الطلب'}</h2>
                 {isOwner && bids && bids.length > 0 && (
-                  <Button onClick={handleAnalyzeBids} disabled={isAnalyzing} variant="outline" className="gap-2 bg-primary/5 border-primary/20 text-primary rounded-xl">
+                  <Button onClick={handleAnalyzeBids} disabled={isAnalyzing} variant="outline" className="gap-2 border-primary/20 text-primary rounded-xl">
                     {isAnalyzing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-                    تحليل ومقارنة العروض (AI)
+                    تحليل العروض ذكياً
                   </Button>
                 )}
-                <h2 className="text-2xl font-black">{isOwner || isAdmin ? `العروض المتاحة (${bids?.length || 0})` : 'عروضك السابقة لهذا الطلب'}</h2>
               </div>
 
               {isOwner && aiAnalysis && (
-                <Card className="bg-primary/5 border-primary/20 space-y-3 p-6 rounded-3xl shadow-lg animate-in zoom-in-95">
-                  <p className="font-bold text-primary flex items-center gap-2 justify-end"><Sparkles className="h-4 w-4" /> التوصية الذكية للمستشفى:</p>
-                  <div className="bg-white p-6 rounded-2xl shadow-sm text-right border-2 border-primary/10">
+                <Card className="bg-primary/5 border-primary/20 p-6 rounded-3xl shadow-lg border-2 text-right">
+                  <p className="font-bold text-primary flex items-center gap-2 justify-end mb-4"><span>التوصية الذكية للاختيار:</span> <Sparkles className="h-4 w-4" /></p>
+                  <div className="bg-white p-6 rounded-2xl shadow-sm border border-primary/10">
                     <p className="font-black text-xl text-primary">{aiAnalysis.bestOption.engineerName}</p>
                     <p className="text-sm text-muted-foreground mt-2 leading-relaxed">{aiAnalysis.bestOption.reason}</p>
-                    <div className="mt-6 p-4 bg-amber-50 rounded-xl text-sm text-amber-900 border border-amber-100 flex items-start gap-3">
-                      <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0" />
-                      <div>
-                        <strong>تحليل المخاطر والاعتبارات:</strong>
-                        <p className="mt-1 opacity-80">{aiAnalysis.riskAnalysis}</p>
-                      </div>
+                    <div className="mt-4 p-4 bg-amber-50 rounded-xl text-xs text-amber-900 border border-amber-100">
+                      <strong>تحليل المخاطر:</strong> {aiAnalysis.riskAnalysis}
                     </div>
                   </div>
                 </Card>
@@ -365,14 +376,14 @@ export default function RequestDetailsPage() {
 
               <div className="space-y-4">
                 {bids?.map(bid => (
-                  <Card key={bid.id} className="hover:shadow-2xl transition-all duration-300 overflow-hidden border-none shadow-md rounded-3xl group">
-                    <CardContent className="p-0">
-                      <div className="flex flex-col sm:flex-row">
-                        <div className="p-6 flex-1 text-right">
-                          <div className="flex items-center gap-3 mb-4 justify-end">
-                            <div className="text-right">
-                              <p className="font-bold text-lg">{bid.engineerId === user?.uid ? 'عرضك الحالي' : 'مهندس صيانة متخصص'}</p>
-                              <div className="flex items-center gap-1 justify-end text-xs text-yellow-500">
+                  <Card key={bid.id} className="hover:shadow-xl transition-all overflow-hidden border-none shadow-md rounded-3xl">
+                    <CardContent className="p-6">
+                      <div className="flex flex-col sm:flex-row gap-6">
+                        <div className="flex-1 text-right order-1 sm:order-2">
+                          <div className="flex items-center gap-3 mb-3 justify-end">
+                            <div>
+                              <p className="font-bold text-lg">مهندس صيانة متخصص</p>
+                              <div className="flex items-center gap-1 justify-end text-yellow-500">
                                 <Star className="h-3 w-3 fill-current" />
                                 <Star className="h-3 w-3 fill-current" />
                                 <Star className="h-3 w-3 fill-current" />
@@ -384,20 +395,20 @@ export default function RequestDetailsPage() {
                               <User className="h-6 w-6 text-primary" />
                             </div>
                           </div>
-                          <p className="text-muted-foreground leading-relaxed text-sm bg-muted/30 p-4 rounded-2xl border border-muted-foreground/5">{bid.description}</p>
-                          <div className="mt-4 flex items-center gap-6 justify-end">
-                             <span className="flex items-center gap-2 text-primary font-black text-2xl">{bid.price} ر.س <DollarSign className="h-5 w-5" /></span>
-                             <span className="flex items-center gap-2 text-muted-foreground text-sm font-medium">{bid.estimatedDays} أيام عمل <Timer className="h-4 w-4" /></span>
+                          <p className="text-sm text-muted-foreground leading-relaxed bg-muted/20 p-4 rounded-2xl">{bid.description}</p>
+                          <div className="mt-4 flex items-center gap-4 justify-end">
+                             <Badge variant="outline" className="text-primary font-black text-lg">{bid.price} ر.س</Badge>
+                             <Badge variant="outline" className="text-muted-foreground">{bid.estimatedDays} أيام</Badge>
                           </div>
                         </div>
                         {isOwner && request.status === 'open' && (
-                          <div className="bg-muted/20 p-6 flex items-center justify-center border-r sm:w-48">
-                            <Button size="lg" className="w-full rounded-2xl shadow-xl shadow-primary/20 py-8" onClick={() => handleAcceptBid(bid)}>قبول العرض</Button>
+                          <div className="flex items-center justify-center sm:w-40 order-2 sm:order-1 border-t sm:border-t-0 sm:border-l pt-4 sm:pt-0 sm:pl-4">
+                            <Button className="w-full rounded-xl" onClick={() => handleAcceptBid(bid)}>قبول العرض</Button>
                           </div>
                         )}
                         {bid.status === 'accepted' && (
-                          <div className="bg-green-500/10 p-6 flex items-center justify-center border-r sm:w-48">
-                             <Badge className="bg-green-500 text-white p-3 rounded-xl gap-2"><CheckCircle2 className="h-4 w-4" /> العرض المقبول</Badge>
+                          <div className="flex items-center justify-center sm:w-40 order-2 sm:order-1 text-green-600 font-bold bg-green-50 rounded-xl p-2">
+                            تم القبول
                           </div>
                         )}
                       </div>
@@ -405,9 +416,9 @@ export default function RequestDetailsPage() {
                   </Card>
                 ))}
                 {(!bids || bids.length === 0) && (
-                  <div className="text-center py-20 bg-muted/10 rounded-[3rem] border-2 border-dashed border-muted-foreground/20">
-                    <Wrench className="h-16 w-16 text-muted-foreground/20 mx-auto mb-4" />
-                    <p className="text-muted-foreground font-medium">{isOwner ? 'لم تصل أي عروض حتى الآن، سيتم إشعارك فور وصولها.' : 'لم تقدم عرضاً لهذا الطلب بعد، ابدأ الآن بمساعدة الذكاء الاصطناعي.'}</p>
+                  <div className="text-center py-16 bg-muted/10 rounded-[2.5rem] border-2 border-dashed">
+                    <Wrench className="h-12 w-12 text-muted-foreground/20 mx-auto mb-4" />
+                    <p className="text-muted-foreground">{isOwner ? 'لا توجد عروض حالياً.' : 'لم تقدم عرضاً بعد.'}</p>
                   </div>
                 )}
               </div>
@@ -416,75 +427,60 @@ export default function RequestDetailsPage() {
 
           <div className="space-y-6">
             {!isOwner && !isAdmin && request.status === 'open' && (
-              <Card className="shadow-2xl border-t-8 border-t-primary rounded-[2.5rem] overflow-hidden sticky top-24">
-                <CardHeader className="text-right pb-0">
-                  <CardTitle className="text-2xl font-black">تقديم عرض تقني</CardTitle>
-                  <CardDescription>قدم عرضاً احترافياً مقنعاً لزيادة فرص قبولك.</CardDescription>
+              <Card className="shadow-2xl border-t-4 border-t-primary rounded-3xl sticky top-24">
+                <CardHeader className="text-right">
+                  <CardTitle className="text-2xl font-black">تقديم عرض</CardTitle>
                 </CardHeader>
-                <CardContent className="p-8 space-y-6 text-right">
+                <CardContent className="space-y-4 text-right">
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label className="font-bold flex items-center gap-2 justify-end">السعر <DollarSign className="h-3 w-3" /></Label>
-                      <Input type="number" placeholder="0.00" value={bidPrice} onChange={(e) => setBidPrice(e.target.value)} className="h-14 rounded-2xl text-lg text-center font-bold" />
+                      <Label className="font-bold flex justify-end">السعر <DollarSign className="h-3 w-3 mr-1" /></Label>
+                      <Input type="number" value={bidPrice} onChange={(e) => setBidPrice(e.target.value)} className="h-12 rounded-xl text-center font-bold" />
                     </div>
                     <div className="space-y-2">
-                      <Label className="font-bold flex items-center gap-2 justify-end">المدة <Timer className="h-3 w-3" /></Label>
-                      <Input type="number" placeholder="أيام" value={bidDays} onChange={(e) => setBidDays(e.target.value)} className="h-14 rounded-2xl text-lg text-center font-bold" />
+                      <Label className="font-bold flex justify-end">المدة (أيام) <Timer className="h-3 w-3 mr-1" /></Label>
+                      <Input type="number" value={bidDays} onChange={(e) => setBidDays(e.target.value)} className="h-12 rounded-xl text-center font-bold" />
                     </div>
                   </div>
                   
                   <div className="space-y-2">
-                    <div className="flex items-center justify-between mb-2">
-                      <Button 
-                        type="button" 
-                        variant="outline" 
-                        size="sm" 
-                        onClick={handleGenerateAIBid}
-                        disabled={isGeneratingBidAI}
-                        className="text-primary bg-primary/5 hover:bg-primary/10 border-primary/30 flex items-center gap-2 h-9 rounded-xl"
-                      >
-                        {isGeneratingBidAI ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-                        صياغة تقنية ذكية
+                    <div className="flex items-center justify-between mb-1">
+                      <Button variant="outline" size="sm" onClick={handleGenerateAIBid} disabled={isGeneratingBidAI} className="text-primary h-8 rounded-lg gap-1 border-primary/30">
+                        {isGeneratingBidAI ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
+                        صياغة ذكية
                       </Button>
-                      <Label className="font-bold">خطة العمل والوصف</Label>
+                      <Label className="font-bold">الوصف التقني</Label>
                     </div>
                     <Textarea 
-                      placeholder="صف خطواتك التقنية، قطع الغيار، وضمان الجودة..." 
+                      placeholder="اشرح خطة الإصلاح..." 
                       value={bidDesc} 
                       onChange={(e) => setBidDesc(e.target.value)} 
-                      className="min-h-[180px] rounded-2xl p-4 leading-relaxed text-sm bg-muted/20" 
+                      className="min-h-[150px] rounded-xl text-right" 
                     />
-                    <p className="text-[10px] text-muted-foreground mt-2 leading-tight">نصيحة: اكتب رؤوس أقلام ثم استخدم الصياغة الذكية لتحويلها لعرض احترافي متكامل.</p>
                   </div>
 
-                  <Button className="w-full h-16 text-xl font-black rounded-[1.5rem] shadow-2xl shadow-primary/30 mt-4 transition-all hover:scale-[1.02] active:scale-[0.98]" onClick={handleSendBid} disabled={isSubmittingBid || !bidPrice || !bidDays}>
-                    {isSubmittingBid ? <Loader2 className="h-6 w-6 animate-spin" /> : 'إرسال عرضي الآن'}
+                  <Button className="w-full h-14 text-lg font-bold rounded-xl mt-2" onClick={handleSendBid} disabled={isSubmittingBid || !bidPrice || !bidDays}>
+                    {isSubmittingBid ? <Loader2 className="h-5 w-5 animate-spin" /> : 'إرسال العرض الآن'}
                   </Button>
                 </CardContent>
               </Card>
             )}
 
             {request.status !== 'open' && (
-              <Card className="bg-primary/5 border-primary/20 rounded-3xl shadow-inner border-2">
-                <CardContent className="p-8 text-center space-y-4">
-                  <div className="bg-white w-20 h-20 rounded-full flex items-center justify-center mx-auto shadow-xl">
-                    <ShieldAlert className="h-10 w-10 text-primary" />
-                  </div>
-                  <h4 className="font-black text-xl">حالة الطلب: {request.status === 'assigned' ? 'تم الإسناد والعمل جاري' : 'مكتمل ومغلق'}</h4>
-                  <p className="text-sm text-muted-foreground leading-relaxed">هذا الطلب في مرحلة التنفيذ النهائية ولا يقبل عروضاً جديدة حالياً.</p>
-                </CardContent>
+              <Card className="bg-muted/50 border-none rounded-3xl text-center p-8">
+                <ShieldAlert className="h-12 w-12 text-muted-foreground/30 mx-auto mb-4" />
+                <h4 className="font-bold text-lg">الطلب {request.status === 'assigned' ? 'مسند' : 'مكتمل'}</h4>
+                <p className="text-sm text-muted-foreground mt-2">لا يمكن تقديم عروض جديدة حالياً.</p>
               </Card>
             )}
             
-            <Card className="rounded-3xl border-none bg-slate-900 text-white overflow-hidden">
-               <div className="p-6 text-right space-y-4">
-                  <h4 className="font-bold flex items-center gap-2 justify-end">نصائح القبول <Info className="h-4 w-4" /></h4>
-                  <ul className="text-xs space-y-2 opacity-80 leading-relaxed">
-                     <li>• اجعل وصفك التقني دقيقاً ومفصلاً.</li>
-                     <li>• ركز على معايير الأمان والمعايرة الطبية.</li>
-                     <li>• السعر المنطقي يبعث على الثقة أكثر من السعر المتدني جداً.</li>
-                  </ul>
-               </div>
+            <Card className="rounded-2xl border-none bg-slate-900 text-white p-6 text-right space-y-3">
+               <h4 className="font-bold flex items-center gap-2 justify-end">نصائح القبول <Info className="h-4 w-4" /></h4>
+               <ul className="text-[10px] space-y-2 opacity-80">
+                  <li>• التفصيل التقني يبعث على الثقة.</li>
+                  <li>• ذكر قطع الغيار الأصلية ميزة قوية.</li>
+                  <li>• التزم بتقديم ضمان على عملك.</li>
+               </ul>
             </Card>
           </div>
         </div>
