@@ -16,15 +16,20 @@ import {
   Activity,
   ArrowUpRight
 } from 'lucide-react';
-import { useCollection, useFirestore } from '@/firebase';
-import { collection, query, limit } from 'firebase/firestore';
+import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
+import { collection } from 'firebase/firestore';
 
 export function AdminDashboard() {
   const firestore = useFirestore();
 
-  const { data: users, isLoading: usersLoading } = useCollection(collection(firestore, 'users'));
-  const { data: requests, isLoading: requestsLoading } = useCollection(collection(firestore, 'maintenanceRequests'));
-  const { data: devices, isLoading: devicesLoading } = useCollection(collection(firestore, 'devices'));
+  // Memoizing all collection references to prevent the "not properly memoized" error
+  const usersRef = useMemoFirebase(() => firestore ? collection(firestore, 'users') : null, [firestore]);
+  const requestsRef = useMemoFirebase(() => firestore ? collection(firestore, 'maintenanceRequests') : null, [firestore]);
+  const devicesRef = useMemoFirebase(() => firestore ? collection(firestore, 'devices') : null, [firestore]);
+
+  const { data: users, isLoading: usersLoading } = useCollection(usersRef);
+  const { data: requests, isLoading: requestsLoading } = useCollection(requestsRef);
+  const { data: devices, isLoading: devicesLoading } = useCollection(devicesRef);
 
   if (usersLoading || requestsLoading || devicesLoading) {
     return (
