@@ -6,7 +6,7 @@ service cloud.firestore {
     /**
      * CORE PHILOSOPHY
      * This ruleset implements a robust, role-based security model.
-     * UPDATED: Enhanced isAdmin check and list permissions.
+     * UPDATED: Allowed notification creation for signed-in users to enable cross-user alerts.
      */
 
     // --- Helper Functions ---
@@ -85,15 +85,16 @@ service cloud.firestore {
 
     match /users/{userId}/notifications/{notificationId} {
       allow get, list: if isOwner(userId);
+      allow create: if isSignedIn(); // Allowed so users can notify each other (e.g. engineer notifies hospital)
       allow update: if isOwner(userId) && request.resource.data.userId == userId;
-      allow create, delete: if isAdmin(); 
+      allow delete: if isAdmin(); 
     }
 
     match /reviews/{reviewId} {
       allow get, list: if isSignedIn();
       allow create: if isSignedIn() && isDataOwner(request.resource.data.hospitalId);
-      allow update: if isExistingOwner(resource.data.hospitalId) && request.resource.data.hospitalId == resource.data.hospitalId;
-      allow delete: if isExistingOwner(resource.data.hospitalId) || isAdmin();
+      allow update: if isExistingOwner(request.resource.data.hospitalId) && request.resource.data.hospitalId == resource.data.hospitalId;
+      allow delete: if isExistingOwner(request.resource.data.hospitalId) || isAdmin();
     }
   }
 }
