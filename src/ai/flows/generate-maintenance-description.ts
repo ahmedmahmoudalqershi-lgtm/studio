@@ -1,23 +1,21 @@
 'use server';
 /**
- * @fileOverview This file implements a Genkit flow to assist hospital users in drafting detailed maintenance request descriptions.
+ * @fileOverview يساعد هذا الملف مستخدمي المستشفيات في صياغة أوصاف دقيقة لطلبات الصيانة باستخدام الذكاء الاصطناعي باللغة العربية.
  *
- * - generateMaintenanceRequestDescription - A function that leverages AI to generate comprehensive maintenance descriptions.
- * - GenerateMaintenanceRequestDescriptionInput - The input type for the generateMaintenanceRequestDescription function.
- * - GenerateMaintenanceRequestDescriptionOutput - The return type for the generateMaintenanceRequestDescription function.
+ * - generateMaintenanceRequestDescription - وظيفة تولد وصفاً شاملاً للصيانة.
  */
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 
 const GenerateMaintenanceRequestDescriptionInputSchema = z.object({
-  deviceName: z.string().describe('The name of the medical device requiring maintenance.'),
-  reportedProblem: z.string().describe('A brief description of the problem reported for the device.'),
+  deviceName: z.string().describe('اسم الجهاز الطبي الذي يحتاج لصيانة.'),
+  reportedProblem: z.string().describe('وصف مختصر للمشكلة المبلغ عنها.'),
 });
 export type GenerateMaintenanceRequestDescriptionInput = z.infer<typeof GenerateMaintenanceRequestDescriptionInputSchema>;
 
 const GenerateMaintenanceRequestDescriptionOutputSchema = z.object({
-  detailedDescription: z.string().describe('A detailed and comprehensive description for a maintenance request.'),
+  detailedDescription: z.string().describe('وصف مفصل وشامل لطلب الصيانة باللغة العربية.'),
 });
 export type GenerateMaintenanceRequestDescriptionOutput = z.infer<typeof GenerateMaintenanceRequestDescriptionOutputSchema>;
 
@@ -25,18 +23,18 @@ const prompt = ai.definePrompt({
   name: 'generateMaintenanceDescriptionPrompt',
   input: {schema: GenerateMaintenanceRequestDescriptionInputSchema},
   output: {schema: GenerateMaintenanceRequestDescriptionOutputSchema},
-  prompt: `You are an AI assistant designed to help hospital users create detailed and comprehensive maintenance request descriptions for medical devices. Your goal is to provide engineers with all the necessary information to give accurate quotes and perform effective repairs.
+  prompt: `أنت مساعد ذكاء اصطناعي متخصص في صيانة الأجهزة الطبية. مهمتك هي مساعدة موظفي المستشفى في صياغة وصف تقني دقيق واحترافي لطلب صيانة.
 
-Based on the following simple inputs, generate a detailed maintenance request description that is clear, concise, and includes:
-- A clear and concise statement of the problem.
-- Any observable symptoms or error codes.
-- When the problem started (if known).
-- What attempts, if any, have been made to resolve the issue internally.
-- Any critical impact on hospital operations or patient care.
-- Any other relevant details that an engineer would need to diagnose and repair the device effectively.
+بناءً على المعلومات البسيطة التالية، قم بتوليد وصف مفصل باللغة العربية يتضمن:
+- صياغة واضحة للمشكلة التقنية.
+- الأعراض الظاهرة أو أكواد الخطأ (إن وجدت).
+- تأثير المشكلة على سير العمل في المستشفى.
+- أي تفاصيل فنية تساعد المهندس في التشخيص السريع والدقيق.
 
-Device Name: {{{deviceName}}}
-Reported Problem: {{{reportedProblem}}}`,
+اسم الجهاز: {{{deviceName}}}
+المشكلة المبلغ عنها: {{{reportedProblem}}}
+
+يجب أن يكون النص النهائي احترافياً وموجهاً لمهندس صيانة متخصص.`,
 });
 
 const generateMaintenanceRequestDescriptionFlow = ai.defineFlow(

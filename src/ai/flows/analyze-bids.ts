@@ -1,11 +1,8 @@
-
 'use server';
 /**
- * @fileOverview This file implements a Genkit flow to analyze and compare engineer bids for a maintenance request.
+ * @fileOverview يقوم هذا الملف بتحليل ومقارنة عروض المهندسين لمساعدة المستشفيات في اختيار العرض الأنسب باللغة العربية.
  *
- * - analyzeBids - A function that helps hospitals choose the best bid using AI.
- * - AnalyzeBidsInput - The input type.
- * - AnalyzeBidsOutput - The return type.
+ * - analyzeBids - وظيفة تحلل العروض وتقدم توصية ذكية.
  */
 
 import {ai} from '@/ai/genkit';
@@ -27,12 +24,12 @@ const AnalyzeBidsInputSchema = z.object({
 export type AnalyzeBidsInput = z.infer<typeof AnalyzeBidsInputSchema>;
 
 const AnalyzeBidsOutputSchema = z.object({
-  summary: z.string().describe('A summary comparing the bids.'),
+  summary: z.string().describe('ملخص مقارنة العروض باللغة العربية.'),
   bestOption: z.object({
     engineerName: z.string(),
-    reason: z.string(),
+    reason: z.string().describe('سبب اختيار هذا المهندس كأفضل خيار.'),
   }),
-  riskAnalysis: z.string().describe('Potential risks identified in the bids.'),
+  riskAnalysis: z.string().describe('تحليل المخاطر المحتملة في العروض.'),
 });
 export type AnalyzeBidsOutput = z.infer<typeof AnalyzeBidsOutputSchema>;
 
@@ -40,20 +37,20 @@ const prompt = ai.definePrompt({
   name: 'analyzeBidsPrompt',
   input: {schema: AnalyzeBidsInputSchema},
   output: {schema: AnalyzeBidsOutputSchema},
-  prompt: `You are an AI advisor for a hospital management team. Your task is to analyze and compare several maintenance bids from engineers for a specific medical device repair request.
+  prompt: `أنت مستشار ذكي لإدارة المستشفيات. مهمتك هي تحليل ومقارنة عدة عروض مقدمة من مهندسي الصيانة لطلب محدد.
 
-Request: {{{requestTitle}}}
-Details: {{{requestDescription}}}
+الطلب: {{{requestTitle}}}
+التفاصيل: {{{requestDescription}}}
 
-Bids to compare:
+العروض المتاحة:
 {{#each bids}}
-- Engineer: {{{this.engineerName}}} (Rating: {{{this.rating}}}/5)
-  Price: {{{this.price}}} SAR
-  Time: {{{this.estimatedDays}}} days
-  Proposal: {{{this.description}}}
+- المهندس: {{{this.engineerName}}} (التقييم: {{{this.rating}}}/5)
+  السعر: {{{this.price}}} ريال
+  المدة: {{{this.estimatedDays}}} أيام
+  تفاصيل العرض: {{{this.description}}}
 {{/each}}
 
-Provide a detailed comparison, recommend the best option based on balance of cost, time, and quality (rating), and highlight any potential risks (e.g., suspiciously low price, vague description).`,
+قم بتقديم مقارنة دقيقة باللغة العربية، ورشح أفضل خيار بناءً على التوازن بين السعر والمدة والتقييم، مع توضيح أي مخاطر محتملة (مثل الأسعار المنخفضة بشكل مريب أو الأوصاف الغامضة).`,
 });
 
 const analyzeBidsFlow = ai.defineFlow(
