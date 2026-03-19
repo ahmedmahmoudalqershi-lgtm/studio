@@ -1,0 +1,631 @@
+{
+  "entities": {
+    "User": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "User",
+      "type": "object",
+      "description": "Represents a user account within the system, capable of acting as a hospital, engineer, or administrator.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the User entity."
+        },
+        "email": {
+          "type": "string",
+          "description": "The unique email address of the user.",
+          "format": "email"
+        },
+        "role": {
+          "type": "string",
+          "description": "The assigned role of the user (e.g., hospital, engineer, admin).",
+          "items": {
+            "type": "string"
+          }
+        },
+        "status": {
+          "type": "string",
+          "description": "The current status of the user's account.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the user account was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp when the user account was last updated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "email",
+        "role",
+        "status",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "HospitalProfile": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "HospitalProfile",
+      "type": "object",
+      "description": "Stores detailed profile information for a hospital user.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the HospitalProfile entity."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to the User account associated with this hospital profile. (Relationship: User 1:N HospitalProfile)"
+        },
+        "hospitalName": {
+          "type": "string",
+          "description": "The official name of the hospital."
+        },
+        "address": {
+          "type": "string",
+          "description": "The physical address of the hospital."
+        },
+        "city": {
+          "type": "string",
+          "description": "The city where the hospital is located."
+        },
+        "phone": {
+          "type": "string",
+          "description": "The primary contact phone number for the hospital."
+        },
+        "commercialRegistrationFileUrl": {
+          "type": "string",
+          "description": "URL to the commercial registration file of the hospital.",
+          "format": "uri"
+        },
+        "verifiedAt": {
+          "type": "string",
+          "description": "Timestamp when the hospital profile was verified.",
+          "format": "date-time"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the hospital profile was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp when the hospital profile was last updated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "hospitalName",
+        "address",
+        "city",
+        "phone",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "EngineerProfile": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "EngineerProfile",
+      "type": "object",
+      "description": "Stores detailed profile information for an engineer user.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the EngineerProfile entity."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to the User account associated with this engineer profile. (Relationship: User 1:N EngineerProfile)"
+        },
+        "fullName": {
+          "type": "string",
+          "description": "The full name of the engineer."
+        },
+        "phone": {
+          "type": "string",
+          "description": "The contact phone number for the engineer."
+        },
+        "specialization": {
+          "type": "string",
+          "description": "The primary specialization of the engineer."
+        },
+        "yearsExperience": {
+          "type": "number",
+          "description": "The number of years of experience the engineer has."
+        },
+        "certificationFileUrl": {
+          "type": "string",
+          "description": "URL to the engineer's certification file.",
+          "format": "uri"
+        },
+        "nationalIdFileUrl": {
+          "type": "string",
+          "description": "URL to the engineer's national ID file.",
+          "format": "uri"
+        },
+        "verifiedAt": {
+          "type": "string",
+          "description": "Timestamp when the engineer profile was verified.",
+          "format": "date-time"
+        },
+        "rating": {
+          "type": "number",
+          "description": "The average rating received by the engineer."
+        },
+        "totalJobs": {
+          "type": "number",
+          "description": "The total number of jobs completed by the engineer."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the engineer profile was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp when the engineer profile was last updated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "fullName",
+        "phone",
+        "specialization",
+        "yearsExperience",
+        "rating",
+        "totalJobs",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "Device": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Device",
+      "type": "object",
+      "description": "Represents a medical device registered by a hospital for maintenance.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Device entity."
+        },
+        "hospitalId": {
+          "type": "string",
+          "description": "Reference to the HospitalProfile that owns this device. (Relationship: HospitalProfile 1:N Device)"
+        },
+        "deviceName": {
+          "type": "string",
+          "description": "The name of the medical device."
+        },
+        "model": {
+          "type": "string",
+          "description": "The model number of the device."
+        },
+        "serialNumber": {
+          "type": "string",
+          "description": "The unique serial number of the device."
+        },
+        "manufacturer": {
+          "type": "string",
+          "description": "The manufacturer of the device."
+        },
+        "lastMaintenanceDate": {
+          "type": "string",
+          "description": "The date of the last maintenance performed on the device.",
+          "format": "date"
+        },
+        "status": {
+          "type": "string",
+          "description": "The current operational status of the device.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "specialization": {
+          "type": "string",
+          "description": "The medical specialization category of the device."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the device was registered.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp when the device information was last updated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "hospitalId",
+        "deviceName",
+        "model",
+        "serialNumber",
+        "manufacturer",
+        "status",
+        "specialization",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "MaintenanceRequest": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "MaintenanceRequest",
+      "type": "object",
+      "description": "Represents a request for maintenance initiated by a hospital for a specific device.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the MaintenanceRequest entity."
+        },
+        "hospitalId": {
+          "type": "string",
+          "description": "Reference to the HospitalProfile that created this request. (Relationship: HospitalProfile 1:N MaintenanceRequest)"
+        },
+        "deviceId": {
+          "type": "string",
+          "description": "Reference to the Device for which maintenance is requested. (Relationship: Device 1:N MaintenanceRequest)"
+        },
+        "title": {
+          "type": "string",
+          "description": "A brief title summarizing the maintenance issue."
+        },
+        "description": {
+          "type": "string",
+          "description": "A detailed description of the maintenance problem, possibly augmented by an AI tool."
+        },
+        "urgency": {
+          "type": "string",
+          "description": "The urgency level of the maintenance request (e.g., critical, high, medium, low).",
+          "items": {
+            "type": "string"
+          }
+        },
+        "status": {
+          "type": "string",
+          "description": "The current status of the maintenance request (e.g., open, assigned, in_progress, completed, cancelled).",
+          "items": {
+            "type": "string"
+          }
+        },
+        "assignedEngineerId": {
+          "type": "string",
+          "description": "Reference to the EngineerProfile assigned to this request, if any. (Relationship: EngineerProfile 1:N MaintenanceRequest)"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the maintenance request was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp when the maintenance request was last updated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "hospitalId",
+        "deviceId",
+        "title",
+        "description",
+        "urgency",
+        "status",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "Bid": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Bid",
+      "type": "object",
+      "description": "Represents an offer submitted by an engineer for a maintenance request.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Bid entity."
+        },
+        "requestId": {
+          "type": "string",
+          "description": "Reference to the MaintenanceRequest this bid is for. (Relationship: MaintenanceRequest 1:N Bid)"
+        },
+        "engineerId": {
+          "type": "string",
+          "description": "Reference to the EngineerProfile who submitted the bid. (Relationship: EngineerProfile 1:N Bid)"
+        },
+        "price": {
+          "type": "number",
+          "description": "The quoted price for the maintenance service."
+        },
+        "estimatedDays": {
+          "type": "number",
+          "description": "The estimated number of days to complete the maintenance."
+        },
+        "description": {
+          "type": "string",
+          "description": "Additional details or conditions provided by the engineer in the bid."
+        },
+        "status": {
+          "type": "string",
+          "description": "The current status of the bid (e.g., pending, accepted, rejected, withdrawn).",
+          "items": {
+            "type": "string"
+          }
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the bid was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp when the bid was last updated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "requestId",
+        "engineerId",
+        "price",
+        "estimatedDays",
+        "status",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "Notification": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Notification",
+      "type": "object",
+      "description": "Represents a notification sent to a user.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Notification entity."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to the User who is the recipient of the notification. (Relationship: User 1:N Notification)"
+        },
+        "message": {
+          "type": "string",
+          "description": "The content of the notification message."
+        },
+        "type": {
+          "type": "string",
+          "description": "The type or category of the notification (e.g., general, urgent, bid_update)."
+        },
+        "isRead": {
+          "type": "boolean",
+          "description": "Indicates whether the user has read the notification."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the notification was created.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "message",
+        "type",
+        "isRead",
+        "createdAt"
+      ]
+    },
+    "Review": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Review",
+      "type": "object",
+      "description": "Represents a review and rating provided by a hospital for an engineer after a completed maintenance request.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Review entity."
+        },
+        "requestId": {
+          "type": "string",
+          "description": "Reference to the MaintenanceRequest this review is associated with. (Relationship: MaintenanceRequest 1:N Review)"
+        },
+        "hospitalId": {
+          "type": "string",
+          "description": "Reference to the HospitalProfile that submitted the review. (Relationship: HospitalProfile 1:N Review)"
+        },
+        "engineerId": {
+          "type": "string",
+          "description": "Reference to the EngineerProfile being reviewed. (Relationship: EngineerProfile 1:N Review)"
+        },
+        "rating": {
+          "type": "number",
+          "description": "The rating given to the engineer (1-5 stars)."
+        },
+        "comment": {
+          "type": "string",
+          "description": "Optional comment or feedback provided with the rating."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the review was created.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "requestId",
+        "hospitalId",
+        "engineerId",
+        "rating",
+        "createdAt"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "user",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Stores core user information including email and role. The userId document ID MUST match `request.auth.uid` for individual user profile management. This document contains the 'role' field used for role-based access control (DBAC)."
+        }
+      },
+      {
+        "path": "/roles_admin/{adminId}",
+        "definition": {
+          "entityName": "user",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Dedicated collection for Database Access Control. The existence of a document at this path where `adminId` matches `request.auth.uid` grants administrator privileges across the system. This implements 'Existence over Content' for global roles.",
+          "params": [
+            {
+              "name": "adminId",
+              "description": "The unique user ID of an administrator. Must match `request.auth.uid` for administrative access."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/hospitalProfiles/{hospitalId}",
+        "definition": {
+          "entityName": "hospitalProfile",
+          "schema": {
+            "$ref": "#/backend/entities/HospitalProfile"
+          },
+          "description": "Stores detailed profile for hospital users. The `hospitalId` in the path MUST be the `userId` of the hospital user. Includes denormalized 'userId' field to match `{hospitalId}` and `request.auth.uid` for authorization independence.",
+          "params": [
+            {
+              "name": "hospitalId",
+              "description": "The unique user ID of the hospital account, also serving as the document ID for its profile."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/engineerProfiles/{engineerId}",
+        "definition": {
+          "entityName": "engineerProfile",
+          "schema": {
+            "$ref": "#/backend/entities/EngineerProfile"
+          },
+          "description": "Stores detailed profile for engineer users. The `engineerId` in the path MUST be the `userId` of the engineer user. Includes denormalized 'userId' field to match `{engineerId}` and `request.auth.uid` for authorization independence.",
+          "params": [
+            {
+              "name": "engineerId",
+              "description": "The unique user ID of the engineer account, also serving as the document ID for their profile."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/devices/{deviceId}",
+        "definition": {
+          "entityName": "device",
+          "schema": {
+            "$ref": "#/backend/entities/Device"
+          },
+          "description": "Stores medical devices registered by hospitals. Top-level collection for easier querying. Includes denormalized 'hospitalId' (the userId of the owning hospital) for authorization independence, allowing direct `request.auth.uid` checks.",
+          "params": [
+            {
+              "name": "deviceId",
+              "description": "The unique identifier for a medical device."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/maintenanceRequests/{requestId}",
+        "definition": {
+          "entityName": "maintenanceRequest",
+          "schema": {
+            "$ref": "#/backend/entities/MaintenanceRequest"
+          },
+          "description": "Stores maintenance requests. Top-level collection to facilitate querying by hospitals and engineers. Includes denormalized 'hospitalId' (the userId of the creating hospital) for authorization independence. Also includes 'assignedEngineerId' (the userId of the assigned engineer) for direct access checks.",
+          "params": [
+            {
+              "name": "requestId",
+              "description": "The unique identifier for a maintenance request."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/maintenanceRequests/{requestId}/bids/{bidId}",
+        "definition": {
+          "entityName": "bid",
+          "schema": {
+            "$ref": "#/backend/entities/Bid"
+          },
+          "description": "Stores bids submitted by engineers for a specific maintenance request. Includes denormalized 'engineerId' (the userId of the bidding engineer) and 'hospitalId' (the userId of the hospital owning the parent request) for authorization independence.",
+          "params": [
+            {
+              "name": "requestId",
+              "description": "The unique identifier of the parent maintenance request."
+            },
+            {
+              "name": "bidId",
+              "description": "The unique identifier for a bid."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/notifications/{notificationId}",
+        "definition": {
+          "entityName": "notification",
+          "schema": {
+            "$ref": "#/backend/entities/Notification"
+          },
+          "description": "Stores notifications specific to a user. The `userId` in the path MUST match the `userId` field in the document and `request.auth.uid` for private access control.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique user ID to whom the notification belongs."
+            },
+            {
+              "name": "notificationId",
+              "description": "The unique identifier for a notification."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/reviews/{reviewId}",
+        "definition": {
+          "entityName": "review",
+          "schema": {
+            "$ref": "#/backend/entities/Review"
+          },
+          "description": "Stores reviews and ratings provided by hospitals for engineers. Top-level collection for efficient querying by both parties. Includes denormalized 'hospitalId' (the userId of the reviewing hospital) and 'engineerId' (the userId of the reviewed engineer) for authorization independence.",
+          "params": [
+            {
+              "name": "reviewId",
+              "description": "The unique identifier for a review."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The recommended Firestore structure is designed to adhere to core principles of security, scalability, and debuggability, with a strong emphasis on authorization independence and efficient query patterns (QAPs). \n\n**Authorization Independence (CRITICAL):** This is primarily achieved through strategic denormalization. For documents whose access depends on a 'parent' entity's ownership (e.g., a device belonging to a hospital, or a bid linked to a maintenance request), the `userId` of the ultimate owner (e.g., `hospitalId`, `engineerId`) is denormalized directly into the child document. This eliminates the need for `get()` operations in security rules to check parent documents, thus preventing authorization dependencies that complicate atomic operations and debugging.\n\n*   For instance, a `device` document at `/devices/{deviceId}` includes a `hospitalId` field, which is the `userId` of the hospital owning that device. This allows rules to directly check `resource.data.hospitalId == request.auth.uid` without fetching the `hospitalProfile`.\n*   Similarly, `maintenanceRequest` documents contain `hospitalId` for the creating hospital, and `bid` documents contain both `engineerId` and `hospitalId` for the bidding engineer and the owning hospital, respectively.\n*   `review` documents also include both `hospitalId` and `engineerId` to facilitate direct authorization checks for who can create/read them.\n\n**QAPs (Rules are not Filters):** The structure ensures that client-side queries can be efficiently secured using Firestore security rules. \n\n*   **Private User Data:** `/users/{userId}/notifications/{notificationId}` ensures that a user can only list or access their own notifications by matching `request.auth.uid` to the `{userId}` path segment.\n*   **User-Owned Top-Level Collections:** Collections like `/devices`, `/maintenanceRequests`, and `/reviews` are top-level. This allows for straightforward querying by the `ownerId` fields (e.g., `db.collection('devices').where('hospitalId', '==', currentUser.uid)`). Security rules then enforce that `request.auth.uid` must match the `hospitalId` (or `engineerId`) field in the document for read/write access. This supports efficient listing of personal assets or requests without exposing unauthorized data.\n*   **Hierarchical User Data:** `/maintenanceRequests/{requestId}/bids/{bidId}` provides a clear hierarchy for managing bids related to a specific request. Authorization within this subcollection also relies on denormalized `engineerId` and `hospitalId` fields within the `bid` document, ensuring that only the bidding engineer or the owning hospital can access or modify the bids for that specific request.\n\n**Structural Segregation:** Each collection (`users`, `hospitalProfiles`, `engineerProfiles`, `devices`, `maintenanceRequests`, `bids`, `notifications`, `reviews`, `roles_admin`) serves a distinct purpose and has a homogenous security posture, making security rules simpler and less prone to errors. For example, `hospitalProfiles` is exclusively for hospital-specific data, and `engineerProfiles` for engineers.\n\n**DBAC & Global Roles:** User roles are stored in the `/users/{userId}` collection. For global roles like 'admin', a dedicated collection `/roles_admin/{adminId}` is used. The mere existence of a document for a `request.auth.uid` in this collection grants admin privileges, simplifying role-based access control ('Existence over Content').\n\n**AI Feature Integration:** The AI description tool for maintenance requests will update the `description` field within the `/maintenanceRequests/{requestId}` documents. This integrates seamlessly into the existing structure, with security rules ensuring that only authorized hospitals (or an authorized service account acting on their behalf) can modify this field."
+  }
+}
