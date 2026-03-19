@@ -4,42 +4,87 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/firebase';
-import { initiateAnonymousSignIn, initiateEmailSignIn, initiateEmailSignUp } from '@/firebase/non-blocking-login';
+import { initiateEmailSignIn, initiateEmailSignUp } from '@/firebase/non-blocking-login';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Label } from '@/components/ui/label';
 import { Wrench, Hospital, ShieldCheck, Loader2 } from 'lucide-react';
-import { doc, setDoc, getFirestore } from 'firebase/firestore';
+import { useToast } from '@/hooks/use-toast';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const auth = useAuth();
-  const db = getFirestore();
   const router = useRouter();
+  const { toast } = useToast();
+
+  const validateEmail = (email: string) => {
+    return String(email)
+      .toLowerCase()
+      .match(
+        /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/
+      );
+  };
 
   async function handleAuth(type: 'login' | 'signup', role: 'hospital' | 'engineer') {
+    if (!email || !password) {
+      toast({
+        variant: "destructive",
+        title: "بيانات ناقصة",
+        description: "يرجى إدخال البريد الإلكتروني وكلمة المرور.",
+      });
+      return;
+    }
+
+    if (!validateEmail(email)) {
+      toast({
+        variant: "destructive",
+        title: "بريد إلكتروني غير صالح",
+        description: "يرجى إدخال بريد إلكتروني بصيغة صحيحة.",
+      });
+      return;
+    }
+
+    if (password.length < 6) {
+      toast({
+        variant: "destructive",
+        title: "كلمة مرور ضعيفة",
+        description: "يجب أن تتكون كلمة المرور من 6 أحرف على الأقل.",
+      });
+      return;
+    }
+
     setIsLoading(true);
     try {
       if (type === 'signup') {
-        // Simple non-blocking sign up logic
-        // In a real app, we'd wait for the auth state change in a root listener
-        // But for this MVP, we'll proceed with simple setup
-        initiateEmailSignUp(auth, email, password);
+        initiateEmailSignUp(auth, email.trim(), password);
+        toast({
+          title: "جاري إنشاء الحساب",
+          description: "يتم الآن إعداد حسابك الجديد...",
+        });
       } else {
-        initiateEmailSignIn(auth, email, password);
+        initiateEmailSignIn(auth, email.trim(), password);
+        toast({
+          title: "جاري تسجيل الدخول",
+          description: "مرحباً بعودتك!",
+        });
       }
       
-      // Artificial delay to wait for auth state
+      // Artificial delay to wait for auth state or simulate redirect
       setTimeout(() => {
         router.push(`/dashboard?role=${role}`);
       }, 2000);
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
       setIsLoading(false);
+      toast({
+        variant: "destructive",
+        title: "خطأ في المصادقة",
+        description: "حدث خطأ أثناء محاولة الدخول. يرجى التأكد من البيانات والمحاولة لاحقاً.",
+      });
     }
   }
 
