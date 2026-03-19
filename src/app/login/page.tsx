@@ -1,9 +1,8 @@
-
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/firebase';
+import { useAuth, useUser } from '@/firebase';
 import { initiateEmailSignIn, initiateEmailSignUp } from '@/firebase/non-blocking-login';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,9 +16,19 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [activeRole, setActiveRole] = useState<'hospital' | 'engineer'>('hospital');
+  
   const auth = useAuth();
+  const { user } = useUser();
   const router = useRouter();
   const { toast } = useToast();
+
+  // Watch for successful auth and redirect
+  useEffect(() => {
+    if (user) {
+      router.push(`/dashboard?role=${activeRole}`);
+    }
+  }, [user, router, activeRole]);
 
   const validateEmail = (email: string) => {
     return String(email)
@@ -58,34 +67,27 @@ export default function LoginPage() {
     }
 
     setIsLoading(true);
-    try {
-      if (type === 'signup') {
-        initiateEmailSignUp(auth, email.trim(), password);
-        toast({
-          title: "جاري إنشاء الحساب",
-          description: "يتم الآن إعداد حسابك الجديد...",
-        });
-      } else {
-        initiateEmailSignIn(auth, email.trim(), password);
-        toast({
-          title: "جاري تسجيل الدخول",
-          description: "مرحباً بعودتك!",
-        });
-      }
-      
-      // Artificial delay to wait for auth state or simulate redirect
-      setTimeout(() => {
-        router.push(`/dashboard?role=${role}`);
-      }, 2000);
-    } catch (error: any) {
-      console.error(error);
-      setIsLoading(false);
+    setActiveRole(role);
+    
+    if (type === 'signup') {
+      initiateEmailSignUp(auth, email.trim(), password);
       toast({
-        variant: "destructive",
-        title: "خطأ في المصادقة",
-        description: "حدث خطأ أثناء محاولة الدخول. يرجى التأكد من البيانات والمحاولة لاحقاً.",
+        title: "جاري المعالجة",
+        description: "يتم الآن إرسال طلب إنشاء الحساب...",
+      });
+    } else {
+      initiateEmailSignIn(auth, email.trim(), password);
+      toast({
+        title: "جاري الدخول",
+        description: "يتم الآن التحقق من بياناتك...",
       });
     }
+
+    // Reset loading state after a few seconds if no user is found
+    // (Actual failure detection happens in non-blocking-login catch blocks)
+    setTimeout(() => {
+      setIsLoading(false);
+    }, 3000);
   }
 
   return (
@@ -99,7 +101,7 @@ export default function LoginPage() {
           <CardDescription>اختر نوع الحساب وقم بتسجيل الدخول للبدء</CardDescription>
         </CardHeader>
         <CardContent>
-          <Tabs defaultValue="hospital" className="w-full">
+          <Tabs defaultValue="hospital" className="w-full" onValueChange={(v) => setActiveRole(v as any)}>
             <TabsList className="grid w-full grid-cols-2 mb-8 h-12">
               <TabsTrigger value="hospital" className="gap-2">
                 <Hospital className="h-4 w-4" /> مستشفى
