@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -12,7 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Wrench, Hospital, ShieldCheck, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
-import { doc, setDoc, serverTimestamp, getDoc } from 'firebase/firestore';
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -56,7 +55,7 @@ export default function LoginPage() {
         const userCredential = await createUserWithEmailAndPassword(auth, email.trim(), password);
         const newUser = userCredential.user;
 
-        // إنشاء وثيقة المستخدم الأساسية
+        // 1. Create base user document for DBAC
         await setDoc(doc(firestore, 'users', newUser.uid), {
           id: newUser.uid,
           email: newUser.email,
@@ -66,14 +65,32 @@ export default function LoginPage() {
           updatedAt: serverTimestamp(),
         });
 
-        // إنشاء ملف التعريف الأولي
-        const profileCol = role === 'hospital' ? 'hospitalProfiles' : 'engineerProfiles';
-        await setDoc(doc(firestore, profileCol, newUser.uid), {
-          userId: newUser.uid,
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
-          ...(role === 'engineer' ? { fullName: email.split('@')[0], rating: 5, totalJobs: 0, specialization: 'General' } : { hospitalName: email.split('@')[0] })
-        });
+        // 2. Create the specialized profile document
+        if (role === 'hospital') {
+          await setDoc(doc(firestore, 'hospitalProfiles', newUser.uid), {
+            id: newUser.uid,
+            userId: newUser.uid,
+            hospitalName: `مستشفى ${email.split('@')[0]}`,
+            address: "سيتم التحديث لاحقاً",
+            city: "الرياض",
+            phone: "05XXXXXXXX",
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+          });
+        } else {
+          await setDoc(doc(firestore, 'engineerProfiles', newUser.uid), {
+            id: newUser.uid,
+            userId: newUser.uid,
+            fullName: `المهندس ${email.split('@')[0]}`,
+            phone: "05XXXXXXXX",
+            specialization: "أجهزة طبية عامة",
+            yearsExperience: 1,
+            rating: 5,
+            totalJobs: 0,
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+          });
+        }
 
         toast({ title: "تم إنشاء الحساب", description: `مرحباً بك كـ ${role === 'hospital' ? 'مستشفى' : 'مهندس'}!` });
       } else {
@@ -98,8 +115,8 @@ export default function LoginPage() {
           <div className="bg-primary mx-auto w-16 h-16 rounded-2xl flex items-center justify-center text-primary-foreground mb-4">
             <Wrench className="h-8 w-8" />
           </div>
-          <CardTitle className="text-2xl font-black font-headline">مرحباً بك</CardTitle>
-          <CardDescription>اختر نوع الحساب وقم بتسجيل الدخول للبدء</CardDescription>
+          <CardTitle className="text-2xl font-black font-headline">بوابة صيانة الأجهزة الطبية</CardTitle>
+          <CardDescription>نظام متكامل للمستشفيات والمهندسين</CardDescription>
         </CardHeader>
         <CardContent>
           <Tabs defaultValue="hospital" className="w-full" onValueChange={(v) => setActiveRole(v as any)}>
@@ -122,10 +139,10 @@ export default function LoginPage() {
                 <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
               </div>
               <div className="grid grid-cols-2 gap-4 pt-4">
-                <Button onClick={() => handleAuth('login', activeRole)} disabled={isLoading}>
+                <Button onClick={() => handleAuth('login', activeRole)} disabled={isLoading} className="w-full">
                   {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'دخول'}
                 </Button>
-                <Button variant="outline" onClick={() => handleAuth('signup', activeRole)} disabled={isLoading}>
+                <Button variant="outline" onClick={() => handleAuth('signup', activeRole)} disabled={isLoading} className="w-full">
                   تسجيل جديد
                 </Button>
               </div>
@@ -133,7 +150,7 @@ export default function LoginPage() {
           </Tabs>
         </CardContent>
         <CardFooter className="text-center text-xs text-muted-foreground justify-center">
-          بالدخول، أنت توافق على شروط الخدمة وسياسة الخصوصية.
+          بالدخول، أنت توافق على شروط الخدمة وسياسة الخصوصية الخاصة بالمنصة.
         </CardFooter>
       </Card>
     </div>
