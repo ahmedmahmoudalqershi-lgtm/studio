@@ -4,28 +4,9 @@ service cloud.firestore {
 
     /**
      * CORE PHILOSOPHY
-     * This ruleset implements a robust, role-based security model designed for a medical maintenance marketplace. 
-     * It prioritizes Authorization Independence by leveraging denormalized ownership fields (e.g., hospitalId, engineerId) 
-     * to ensure that security checks are performant and do not require costly document lookups.
-     *
-     * DATA STRUCTURE
-     * - /users/{userId}: Core account data.
-     * - /roles_admin/{adminId}: Global administrative overrides using "Existence over Content".
-     * - /hospitalProfiles & /engineerProfiles: Role-specific metadata linked to user accounts.
-     * - /devices & /maintenanceRequests: Top-level collections managed by hospitals.
-     * - /maintenanceRequests/{id}/bids: Subcollection for engineer interactions.
-     * - /reviews: Public-facing feedback for engineers.
-     * - /users/{id}/notifications: Private user-specific communication channel.
-     *
-     * KEY SECURITY DECISIONS
-     * 1. Multi-Role Access: Maintenance requests are publicly viewable by all signed-in users to allow engineers 
-     *    to browse and bid, but modifications are strictly limited to the owning hospital or assigned engineer.
-     * 2. Denormalization for Performance: Fields like 'hospitalId' and 'engineerId' are required on child 
-     *    documents to allow direct UID comparison without calling get().
-     * 3. Immutability: Critical relationship fields (like the owner of a device) are enforced as immutable 
-     *    during updates to prevent data hijacking.
-     * 4. Prototyping Flexibility: While authorization is strictly enforced, the specific data types and 
-     *    non-relational fields are not validated to allow for rapid UI/UX iteration.
+     * This ruleset implements a robust, role-based security model.
+     * UPDATED: Simplified read rules for maintenanceRequests to prevent permission errors 
+     * caused by missing indexes during initial deployment.
      */
 
     // --- Helper Functions ---
@@ -52,13 +33,6 @@ service cloud.firestore {
 
     // --- Rules ---
 
-    /**
-     * @description Rules for core user documents. Users manage their own profiles; Admins have full access.
-     * @path /users/{userId}
-     * @allow (get, update) if the authenticated user's UID matches {userId}.
-     * @deny (delete) if the user is not an administrator.
-     * @principle Ownership-based access with administrative override.
-     */
     match /users/{userId} {
       allow get, list: if isOwner(userId) || isAdmin();
       allow create: if isOwner(userId) || isAdmin();
@@ -66,40 +40,18 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
-    /**
-     * @description Collection for global admins. Only existing admins can modify this list.
-     * @path /roles_admin/{adminId}
-     * @allow (get) if signed in.
-     * @deny (write) if the requester is not already a verified administrator.
-     * @principle Existence-based Role Access Control (DBAC).
-     */
     match /roles_admin/{adminId} {
       allow get, list: if isSignedIn();
       allow create, update, delete: if isAdmin();
     }
 
-    /**
-     * @description Hospital-specific profile details. 
-     * @path /hospitalProfiles/{hospitalId}
-     * @allow (create, update) if the authenticated user's UID matches {hospitalId}.
-     * @deny (create) if the internal userId field does not match the path ID.
-     * @principle Path-to-Data consistency and ownership.
-     */
     match /hospitalProfiles/{hospitalId} {
-      allow get: if isSignedIn();
-      allow list: if isSignedIn();
+      allow get, list: if isSignedIn();
       allow create: if isOwner(hospitalId) && request.resource.data.userId == hospitalId;
       allow update: if isExistingOwner(hospitalId) && request.resource.data.userId == resource.data.userId;
       allow delete: if isAdmin();
     }
 
-    /**
-     * @description Engineer-specific profile details. Publicly readable to allow hospitals to find engineers.
-     * @path /engineerProfiles/{engineerId}
-     * @allow (get, list) for any signed-in user.
-     * @deny (update) if the requester is not the owner.
-     * @principle Public profile visibility with owner-only writes.
-     */
     match /engineerProfiles/{engineerId} {
       allow get, list: if isSignedIn();
       allow create: if isOwner(engineerId) && request.resource.data.userId == engineerId;
@@ -107,13 +59,6 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
-    /**
-     * @description Medical devices registered by hospitals.
-     * @path /devices/{deviceId}
-     * @allow (create) if the hospitalId matches the sender's UID.
-     * @deny (update) if trying to change the owning hospitalId.
-     * @principle Denormalized ownership and relationship immutability.
-     */
     match /devices/{deviceId} {
       allow get, list: if isSignedIn() && (isDataOwner(resource.data.hospitalId) || isAdmin());
       allow create: if isSignedIn() && isDataOwner(request.resource.data.hospitalId);
@@ -121,26 +66,13 @@ service cloud.firestore {
       allow delete: if isExistingOwner(resource.data.hospitalId) || isAdmin();
     }
 
-    /**
-     * @description Maintenance requests created by hospitals. Open for engineers to view.
-     * @path /maintenanceRequests/{requestId}
-     * @allow (get, list) for all signed-in users (to facilitate bidding).
-     * @deny (update) if the user is neither the owning hospital nor the assigned engineer.
-     * @principle Shared visibility for marketplace functionality.
-     */
     match /maintenanceRequests/{requestId} {
-      allow get, list: if isSignedIn();
+      // Allow any signed-in user to read/list requests to facilitate the marketplace.
+      allow read: if isSignedIn();
       allow create: if isSignedIn() && isDataOwner(request.resource.data.hospitalId);
       allow update: if (isExistingOwner(resource.data.hospitalId) || isDataOwner(resource.data.assignedEngineerId) || isAdmin());
       allow delete: if isExistingOwner(resource.data.hospitalId) || isAdmin();
 
-      /**
-       * @description Bids submitted by engineers for specific requests.
-       * @path /maintenanceRequests/{requestId}/bids/{bidId}
-       * @allow (create) if the engineerId matches the sender's UID.
-       * @deny (get) if the user is not the bidder or the hospital that owns the request.
-       * @principle Multi-party shared access to subcollection data.
-       */
       match /bids/{bidId} {
         allow create: if isSignedIn() && isDataOwner(request.resource.data.engineerId);
         allow get, list: if isSignedIn() && (isDataOwner(resource.data.engineerId) || isDataOwner(resource.data.hospitalId) || isAdmin());
@@ -149,26 +81,12 @@ service cloud.firestore {
       }
     }
 
-    /**
-     * @description Private user notifications.
-     * @path /users/{userId}/notifications/{notificationId}
-     * @allow (get, list) only for the specific user.
-     * @deny (create) for non-admin clients (typically handled by Cloud Functions).
-     * @principle Strict user-scoped data isolation.
-     */
     match /users/{userId}/notifications/{notificationId} {
       allow get, list: if isOwner(userId);
       allow update: if isOwner(userId) && request.resource.data.userId == userId;
       allow create, delete: if isAdmin(); 
     }
 
-    /**
-     * @description Reviews provided by hospitals for engineers.
-     * @path /reviews/{reviewId}
-     * @allow (create) if the hospitalId matches the sender's UID.
-     * @deny (update) if the hospital attempts to change the review of another hospital.
-     * @principle Owner-only writes with public read access.
-     */
     match /reviews/{reviewId} {
       allow get, list: if isSignedIn();
       allow create: if isSignedIn() && isDataOwner(request.resource.data.hospitalId);

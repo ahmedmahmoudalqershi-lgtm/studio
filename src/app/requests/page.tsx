@@ -1,10 +1,9 @@
-
 "use client";
 
 import React from 'react';
 import { Shell } from '@/components/layout/Shell';
 import { useCollection, useUser, useFirestore, useMemoFirebase } from '@/firebase';
-import { collection, query, where, orderBy } from 'firebase/firestore';
+import { collection, query, where } from 'firebase/firestore';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -25,10 +24,10 @@ export default function MyRequestsPage() {
 
   const requestsQuery = useMemoFirebase(() => {
     if (!firestore || !user) return null;
+    // Removed orderBy to avoid index-related permission errors during initial setup
     return query(
       collection(firestore, 'maintenanceRequests'), 
-      where('hospitalId', '==', user.uid),
-      orderBy('createdAt', 'desc')
+      where('hospitalId', '==', user.uid)
     );
   }, [firestore, user?.uid]);
 

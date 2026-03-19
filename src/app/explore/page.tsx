@@ -1,10 +1,9 @@
-
 "use client";
 
 import React, { useState } from 'react';
 import { Shell } from '@/components/layout/Shell';
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
-import { collection, query, where, orderBy } from 'firebase/firestore';
+import { collection, query, where } from 'firebase/firestore';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -19,14 +18,13 @@ export default function ExploreRequestsPage() {
   const { user } = useUser();
 
   const requestsQuery = useMemoFirebase(() => {
-    // ننتظر حتى يتوفر firestore والمستخدم المسجل قبل تنفيذ الاستعلام
     if (!firestore || !user) return null;
+    // Removed orderBy to avoid index-related permission errors
     return query(
       collection(firestore, 'maintenanceRequests'), 
-      where('status', '==', 'open'),
-      orderBy('createdAt', 'desc')
+      where('status', '==', 'open')
     );
-  }, [firestore, user]);
+  }, [firestore, user?.uid]);
 
   const { data: requests, isLoading } = useCollection(requestsQuery);
 
