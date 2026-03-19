@@ -3,7 +3,6 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth, useUser } from '@/firebase';
-import { initiateEmailSignIn, initiateEmailSignUp } from '@/firebase/non-blocking-login';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
@@ -11,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Label } from '@/components/ui/label';
 import { Wrench, Hospital, ShieldCheck, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -69,25 +69,37 @@ export default function LoginPage() {
     setIsLoading(true);
     setActiveRole(role);
     
-    if (type === 'signup') {
-      initiateEmailSignUp(auth, email.trim(), password);
+    try {
+      if (type === 'signup') {
+        await createUserWithEmailAndPassword(auth, email.trim(), password);
+        toast({
+          title: "تم إنشاء الحساب",
+          description: "مرحباً بك في المنصة!",
+        });
+      } else {
+        await signInWithEmailAndPassword(auth, email.trim(), password);
+        toast({
+          title: "تم تسجيل الدخول",
+          description: "مرحباً بعودتك!",
+        });
+      }
+    } catch (err: any) {
+      let message = "حدث خطأ أثناء محاولة الدخول.";
+      if (err.code === 'auth/invalid-credential') {
+        message = "البريد الإلكتروني أو كلمة المرور غير صحيحة.";
+      } else if (err.code === 'auth/email-already-in-use') {
+        message = "هذا البريد الإلكتروني مسجل مسبقاً.";
+      } else if (err.code === 'auth/too-many-requests') {
+        message = "تم حظر الدخول مؤقتاً بسبب محاولات كثيرة خاطئة. حاول لاحقاً.";
+      }
+      
       toast({
-        title: "جاري المعالجة",
-        description: "يتم الآن إرسال طلب إنشاء الحساب...",
+        variant: "destructive",
+        title: "فشل الدخول",
+        description: message,
       });
-    } else {
-      initiateEmailSignIn(auth, email.trim(), password);
-      toast({
-        title: "جاري الدخول",
-        description: "يتم الآن التحقق من بياناتك...",
-      });
-    }
-
-    // Reset loading state after a few seconds if no user is found
-    // (Actual failure detection happens in non-blocking-login catch blocks)
-    setTimeout(() => {
       setIsLoading(false);
-    }, 3000);
+    }
   }
 
   return (
