@@ -12,7 +12,10 @@ import {
   Search,
   Bell,
   Wrench,
-  LogOut
+  LogOut,
+  Users,
+  ShieldCheck,
+  Settings
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -40,7 +43,6 @@ export function Shell({ children }: ShellProps) {
   const auth = useAuth();
   const firestore = useFirestore();
 
-  // جلب بيانات الدور
   const userRef = useMemoFirebase(() => {
     if (!firestore || !user) return null;
     return doc(firestore, 'users', user.uid);
@@ -49,15 +51,13 @@ export function Shell({ children }: ShellProps) {
 
   const userRole = userData?.role || 'hospital';
   
-  // جلب الملف الشخصي للصور والأسماء الحقيقية
   const profileRef = useMemoFirebase(() => {
     if (!firestore || !user) return null;
-    const collectionName = userRole === 'hospital' ? 'hospitalProfiles' : 'engineerProfiles';
-    return doc(firestore, collectionName, user.uid);
+    const collectionName = userRole === 'hospital' ? 'hospitalProfiles' : userRole === 'engineer' ? 'engineerProfiles' : null;
+    return collectionName ? doc(firestore, collectionName, user.uid) : null;
   }, [firestore, user?.uid, userRole]);
   const { data: profile } = useDoc(profileRef);
 
-  // الإشعارات
   const notificationsQuery = useMemoFirebase(() => {
     if (!firestore || !user) return null;
     return query(
@@ -81,17 +81,33 @@ export function Shell({ children }: ShellProps) {
     }
   };
 
-  const navItems = userRole === 'hospital' ? [
-    { name: 'الرئيسية', icon: LayoutDashboard, href: '/dashboard' },
-    { name: 'أجهزتي', icon: Stethoscope, href: '/devices' },
-    { name: 'طلباتي', icon: ClipboardList, href: '/requests' },
-    { name: 'الملف الشخصي', icon: User, href: '/profile' },
-  ] : [
-    { name: 'الرئيسية', icon: LayoutDashboard, href: '/dashboard' },
-    { name: 'استكشاف', icon: Search, href: '/explore' },
-    { name: 'عروضي', icon: ClipboardList, href: '/bids' },
-    { name: 'الملف الشخصي', icon: User, href: '/profile' },
-  ];
+  const getNavItems = () => {
+    switch(userRole) {
+      case 'admin':
+        return [
+          { name: 'الرئيسية', icon: LayoutDashboard, href: '/dashboard' },
+          { name: 'المستخدمين', icon: Users, href: '/admin/users' },
+          { name: 'الطلبات', icon: ClipboardList, href: '/admin/requests' },
+          { name: 'الإعدادات', icon: Settings, href: '/profile' },
+        ];
+      case 'hospital':
+        return [
+          { name: 'الرئيسية', icon: LayoutDashboard, href: '/dashboard' },
+          { name: 'أجهزتي', icon: Stethoscope, href: '/devices' },
+          { name: 'طلباتي', icon: ClipboardList, href: '/requests' },
+          { name: 'الملف الشخصي', icon: User, href: '/profile' },
+        ];
+      default:
+        return [
+          { name: 'الرئيسية', icon: LayoutDashboard, href: '/dashboard' },
+          { name: 'استكشاف', icon: Search, href: '/explore' },
+          { name: 'عروضي', icon: ClipboardList, href: '/bids' },
+          { name: 'الملف الشخصي', icon: User, href: '/profile' },
+        ];
+    }
+  };
+
+  const navItems = getNavItems();
 
   if (isUserLoading) {
     return (
@@ -106,7 +122,7 @@ export function Shell({ children }: ShellProps) {
   return (
     <div className="flex flex-col min-h-screen bg-slate-50">
       <header className="sticky top-0 z-40 w-full border-b bg-white/80 backdrop-blur-md">
-        <div className="container flex h-16 items-center justify-between px-6">
+        <div className="container flex h-16 items-center justify-between px-6 mx-auto">
           <div className="flex items-center gap-3">
             <Link href="/dashboard" className="flex items-center gap-3 group">
               <div className="bg-primary p-2 rounded-xl text-primary-foreground group-hover:scale-110 transition-transform shadow-lg shadow-primary/20">
@@ -159,9 +175,9 @@ export function Shell({ children }: ShellProps) {
               <DropdownMenuContent align="end" className="w-64 rounded-2xl p-2 shadow-2xl" dir="rtl">
                 <DropdownMenuLabel className="px-3 py-3 text-right">
                   <div className="flex flex-col space-y-1">
-                    <p className="text-sm font-black leading-none">{profile?.fullName || profile?.hospitalName || user?.email}</p>
+                    <p className="text-sm font-black leading-none">{profile?.fullName || profile?.hospitalName || userRole === 'admin' ? 'مدير النظام' : user?.email}</p>
                     <p className="text-[10px] leading-none text-muted-foreground capitalize mt-1">
-                      {userRole === 'hospital' ? 'مستشفى مسجل' : 'مهندس صيانة معتمد'}
+                      {userRole === 'hospital' ? 'مستشفى مسجل' : userRole === 'engineer' ? 'مهندس معتمد' : 'إدارة عليا'}
                     </p>
                   </div>
                 </DropdownMenuLabel>
@@ -184,12 +200,11 @@ export function Shell({ children }: ShellProps) {
       </header>
 
       <main className="flex-1 pb-20 md:pb-12">
-        <div className="container px-6 py-8">
+        <div className="container px-6 py-8 mx-auto">
           {children}
         </div>
       </main>
 
-      {/* Mobile Navigation */}
       <nav className="fixed bottom-4 left-4 right-4 z-50 border bg-white/90 backdrop-blur-xl md:hidden rounded-2xl shadow-2xl border-white/20">
         <div className="flex justify-around items-center h-16">
           {navItems.map((item) => {
