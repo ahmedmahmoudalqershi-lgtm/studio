@@ -6,9 +6,11 @@ import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebas
 import { collection, query, where, limit, onSnapshot } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 
+const APP_ICON_SVG = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%232862B4' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z'/%3E%3Ccircle cx='12' cy='12' r='10' stroke-opacity='0.1'/%3E%3C/svg%3E`;
+
 /**
  * مكون مسؤول عن مراقبة الإشعارات في Firestore وإرسال تنبيهات حقيقية للمتصفح.
- * تم تعديل الاستعلام ليتجنب الحاجة لفهارس مركبة (Composite Indexes).
+ * يستخدم الأيقونة الطبية المخصصة للتنبيهات.
  */
 export function NotificationManager() {
   const { user } = useUser();
@@ -20,18 +22,16 @@ export function NotificationManager() {
   useEffect(() => {
     if (!user || !firestore) return;
 
-    // طلب إذن التنبيهات من المتصفح عند التحميل
     if (typeof window !== 'undefined' && 'Notification' in window) {
       if (Notification.permission === 'default') {
         Notification.requestPermission();
       }
     }
 
-    // استعلام لمراقبة الإشعارات غير المقروءة فقط (بدون orderBy لتجنب خطأ الفهرس)
     const q = query(
       collection(firestore, 'users', user.uid, 'notifications'),
       where('isRead', '==', false),
-      limit(10) // جلب آخر مجموعة للتأكد من التقاط الجديد
+      limit(10)
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -40,7 +40,6 @@ export function NotificationManager() {
         return;
       }
 
-      // في حالة التحميل الأول، فقط نسجل المعرفات الموجودة ولا ننبه المستخدم
       if (isFirstLoad.current) {
         const newestDoc = snapshot.docs[0];
         lastNotifiedId.current = newestDoc.id;
@@ -48,7 +47,6 @@ export function NotificationManager() {
         return;
       }
 
-      // البحث عن أي إشعار جديد لم يتم التنبيه عنه من قبل
       snapshot.docChanges().forEach((change) => {
         if (change.type === "added") {
           const data = change.doc.data();
@@ -57,21 +55,19 @@ export function NotificationManager() {
           if (docId !== lastNotifiedId.current) {
             lastNotifiedId.current = docId;
 
-            // 1. إظهار إشعار المتصفح (Native Push)
             if (typeof window !== 'undefined' && Notification.permission === 'granted') {
               try {
-                new Notification('صيانة بلس: تنبيه جديد', {
+                new Notification('صيانة بلس الطبية', {
                   body: data.message,
-                  icon: '/favicon.ico',
+                  icon: APP_ICON_SVG,
                 });
               } catch (e) {
-                console.warn("Notification API not supported or failed.");
+                console.warn("Notification API failed.");
               }
             }
 
-            // 2. إظهار إشعار داخلي (Toast)
             toast({
-              title: "تنبيه جديد",
+              title: "تنبيه جديد من صيانة بلس",
               description: data.message,
             });
           }
