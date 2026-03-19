@@ -1,8 +1,9 @@
+
 "use client";
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { 
   LayoutDashboard, 
   Stethoscope, 
@@ -10,12 +11,14 @@ import {
   User, 
   Search,
   Bell,
-  Menu,
-  Wrench
+  Wrench,
+  LogOut
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { useUser, useAuth } from '@/firebase';
+import { signOut } from 'firebase/auth';
 
 interface ShellProps {
   children: React.ReactNode;
@@ -24,6 +27,20 @@ interface ShellProps {
 
 export function Shell({ children, role }: ShellProps) {
   const pathname = usePathname();
+  const router = useRouter();
+  const { user, isUserLoading } = useUser();
+  const auth = useAuth();
+
+  useEffect(() => {
+    if (!isUserLoading && !user) {
+      router.push('/login');
+    }
+  }, [user, isUserLoading, router]);
+
+  const handleLogout = async () => {
+    await signOut(auth);
+    router.push('/');
+  };
 
   const navItems = role === 'hospital' ? [
     { name: 'الرئيسية', icon: LayoutDashboard, href: '/dashboard' },
@@ -37,18 +54,30 @@ export function Shell({ children, role }: ShellProps) {
     { name: 'الملف الشخصي', icon: User, href: '/profile' },
   ];
 
+  if (isUserLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-pulse flex flex-col items-center gap-4">
+          <Wrench className="h-12 w-12 text-primary animate-bounce" />
+          <p className="text-muted-foreground font-medium">جاري التحميل...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col min-h-screen bg-background">
-      {/* Top Navigation Bar */}
       <header className="sticky top-0 z-40 w-full border-b bg-background/80 backdrop-blur-md">
         <div className="container flex h-16 items-center justify-between px-4 sm:px-8">
           <div className="flex items-center gap-3">
-            <div className="bg-primary p-2 rounded-xl text-primary-foreground">
-              <Wrench className="h-6 w-6" />
-            </div>
-            <h1 className="text-xl font-bold font-headline hidden sm:block">
-              مساعد صيانة الأجهزة
-            </h1>
+            <Link href="/dashboard" className="flex items-center gap-3">
+              <div className="bg-primary p-2 rounded-xl text-primary-foreground">
+                <Wrench className="h-6 w-6" />
+              </div>
+              <h1 className="text-xl font-bold font-headline hidden sm:block">
+                مساعد صيانة الأجهزة
+              </h1>
+            </Link>
           </div>
           
           <div className="flex items-center gap-4">
@@ -57,21 +86,22 @@ export function Shell({ children, role }: ShellProps) {
               <span className="absolute top-2 right-2 h-2 w-2 bg-secondary rounded-full border-2 border-background"></span>
             </Button>
             <Avatar className="h-8 w-8 ring-2 ring-primary/10">
-              <AvatarImage src={`https://picsum.photos/seed/${role}/100/100`} />
-              <AvatarFallback>U</AvatarFallback>
+              <AvatarImage src={`https://picsum.photos/seed/${user?.uid}/100/100`} />
+              <AvatarFallback>{user?.email?.[0].toUpperCase()}</AvatarFallback>
             </Avatar>
+            <Button variant="ghost" size="icon" onClick={handleLogout} title="تسجيل الخروج">
+              <LogOut className="h-5 w-5 text-destructive" />
+            </Button>
           </div>
         </div>
       </header>
 
-      {/* Main Content Area */}
       <main className="flex-1 pb-20 md:pb-8">
         <div className="container px-4 sm:px-8 py-6">
           {children}
         </div>
       </main>
 
-      {/* Bottom Navigation for Mobile */}
       <nav className="fixed bottom-0 left-0 right-0 z-50 border-t bg-background/90 backdrop-blur-md md:hidden">
         <div className="flex justify-around items-center h-16">
           {navItems.map((item) => {
@@ -92,9 +122,6 @@ export function Shell({ children, role }: ShellProps) {
           })}
         </div>
       </nav>
-
-      {/* Desktop Sidebar (Implicitly shown via hidden md:block in some designs, 
-          but here we use the top bar + larger main content for a clean look) */}
     </div>
   );
 }

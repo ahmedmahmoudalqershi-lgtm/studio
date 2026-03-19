@@ -1,30 +1,67 @@
+
 "use client";
 
 import React from 'react';
-import { MOCK_HOSPITAL, MOCK_DEVICES, MOCK_REQUESTS } from '@/app/lib/mock-data';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
 import { 
   Plus, 
-  Settings, 
   Activity, 
   AlertCircle, 
   CheckCircle2, 
   ArrowRight,
-  TrendingUp
+  TrendingUp,
+  Loader2
 } from 'lucide-react';
 import Link from 'next/link';
+import { useCollection, useUser, useFirestore, useMemoFirebase } from '@/firebase';
+import { collection, query, where } from 'firebase/firestore';
 
 export function HospitalDashboard() {
-  const needsMaintenance = MOCK_DEVICES.filter(d => d.status === 'needs_maintenance').length;
-  const activeRequests = MOCK_REQUESTS.filter(r => r.status === 'open' || r.status === 'in_progress').length;
+  const { user } = useUser();
+  const firestore = useFirestore();
+
+  const devicesQuery = useMemoFirebase(() => {
+    if (!firestore || !user) return null;
+    return query(collection(firestore, 'devices'), where('hospitalId', '==', user.uid));
+  }, [firestore, user]);
+
+  const requestsQuery = useMemoFirebase(() => {
+    if (!firestore || !user) return null;
+    return query(collection(firestore, 'maintenanceRequests'), where('hospitalId', '==', user.uid));
+  }, [firestore, user]);
+
+  const { data: devices, isLoading: devicesLoading } = useCollection(devicesQuery);
+  const { data: requests, isLoading: requestsLoading } = useCollection(requestsQuery);
+
+  const needsMaintenance = devices?.filter(d => d.status === 'needs_maintenance').length || 0;
+  const activeRequests = requests?.filter(r => r.status === 'open' || r.status === 'in_progress').length || 0;
+
+  if (devicesLoading || requestsLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <Skeleton className="h-10 w-48" />
+          <Skeleton className="h-10 w-32" />
+        </div>
+        <div className="grid gap-4 md:grid-cols-4">
+          {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-32 w-full" />)}
+        </div>
+        <div className="grid gap-6 md:grid-cols-2">
+          <Skeleton className="h-64 w-full" />
+          <Skeleton className="h-64 w-full" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight">أهلاً بك، {MOCK_HOSPITAL.hospital_name}</h2>
+          <h2 className="text-2xl font-bold tracking-tight">مستشفى {user?.email?.split('@')[0]}</h2>
           <p className="text-muted-foreground">نظرة عامة على حالة أجهزتك الطبية وطلبات الصيانة.</p>
         </div>
         <Link href="/requests/new">
@@ -41,7 +78,7 @@ export function HospitalDashboard() {
               <p className="text-sm font-medium opacity-80">إجمالي الأجهزة</p>
               <Activity className="h-4 w-4 opacity-80" />
             </div>
-            <div className="mt-2 text-3xl font-bold">{MOCK_DEVICES.length}</div>
+            <div className="mt-2 text-3xl font-bold">{devices?.length || 0}</div>
           </CardContent>
         </Card>
         <Card>
@@ -68,7 +105,7 @@ export function HospitalDashboard() {
               <p className="text-sm font-medium text-muted-foreground">مكتملة مؤخراً</p>
               <CheckCircle2 className="h-4 w-4 text-green-500" />
             </div>
-            <div className="mt-2 text-3xl font-bold">12</div>
+            <div className="mt-2 text-3xl font-bold">0</div>
           </CardContent>
         </Card>
       </div>
@@ -76,24 +113,24 @@ export function HospitalDashboard() {
       <div className="grid gap-6 md:grid-cols-2">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle>الأجهزة المعطلة</CardTitle>
+            <CardTitle>الأجهزة التي تتطلب انتباهك</CardTitle>
             <Link href="/devices" className="text-sm text-primary hover:underline flex items-center gap-1">
               عرض الكل <ArrowRight className="h-3 w-3" />
             </Link>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {MOCK_DEVICES.filter(d => d.status !== 'operational').map(device => (
+              {devices?.filter(d => d.status !== 'operational').map(device => (
                 <div key={device.id} className="flex items-center justify-between p-3 rounded-lg border bg-muted/30">
                   <div>
-                    <p className="font-medium">{device.device_name}</p>
+                    <p className="font-medium">{device.deviceName}</p>
                     <p className="text-xs text-muted-foreground">{device.model} - {device.manufacturer}</p>
                   </div>
                   <Badge variant="destructive" className="text-[10px]">بحاجة لصيانة</Badge>
                 </div>
               ))}
-              {MOCK_DEVICES.filter(d => d.status !== 'operational').length === 0 && (
-                <p className="text-center py-4 text-muted-foreground italic">جميع الأجهزة تعمل بكفاءة.</p>
+              {(!devices || devices.filter(d => d.status !== 'operational').length === 0) && (
+                <p className="text-center py-4 text-muted-foreground italic text-sm">جميع الأجهزة تعمل بكفاءة.</p>
               )}
             </div>
           </CardContent>
@@ -101,22 +138,25 @@ export function HospitalDashboard() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle>أحدث الطلبات</CardTitle>
+            <CardTitle>أحدث طلبات الصيانة</CardTitle>
             <Link href="/requests" className="text-sm text-primary hover:underline flex items-center gap-1">
               عرض الكل <ArrowRight className="h-3 w-3" />
             </Link>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {MOCK_REQUESTS.map(req => (
+              {requests?.slice(0, 5).map(req => (
                 <div key={req.id} className="flex items-center justify-between p-3 rounded-lg border bg-muted/30">
                   <div>
                     <p className="font-medium">{req.title}</p>
-                    <p className="text-xs text-muted-foreground">التاريخ: {new Date(req.created_at).toLocaleDateString('ar-SA')}</p>
+                    <p className="text-xs text-muted-foreground">الحالة: {req.status === 'open' ? 'مفتوح' : 'قيد التنفيذ'}</p>
                   </div>
-                  <Badge variant="outline" className="text-[10px]">مفتوح</Badge>
+                  <Badge variant="outline" className="text-[10px]">{req.urgency === 'critical' ? 'حرج' : 'عادي'}</Badge>
                 </div>
               ))}
+              {(!requests || requests.length === 0) && (
+                <p className="text-center py-4 text-muted-foreground italic text-sm">لا توجد طلبات نشطة حالياً.</p>
+              )}
             </div>
           </CardContent>
         </Card>

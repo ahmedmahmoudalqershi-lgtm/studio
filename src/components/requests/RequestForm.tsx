@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState } from 'react';
@@ -24,11 +25,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Card, CardHeader, CardContent, CardTitle, CardFooter } from '@/components/ui/card';
+import { Card, CardHeader, CardContent, CardTitle } from '@/components/ui/card';
 import { generateMaintenanceRequestDescription } from '@/ai/flows/generate-maintenance-description';
-import { MOCK_DEVICES } from '@/app/lib/mock-data';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
+import { useCollection, useUser, useFirestore, useMemoFirebase } from '@/firebase';
+import { collection, query, where, serverTimestamp, doc } from 'firebase/firestore';
+import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
 const formSchema = z.object({
   deviceId: z.string({ required_error: "يرجى اختيار الجهاز" }),
@@ -41,6 +44,15 @@ export function RequestForm() {
   const [isGenerating, setIsGenerating] = useState(false);
   const { toast } = useToast();
   const router = useRouter();
+  const { user } = useUser();
+  const firestore = useFirestore();
+
+  const devicesQuery = useMemoFirebase(() => {
+    if (!firestore || !user) return null;
+    return query(collection(firestore, 'devices'), where('hospitalId', '==', user.uid));
+  }, [firestore, user]);
+
+  const { data: devices, isLoading: devicesLoading } = useCollection(devicesQuery);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -65,12 +77,12 @@ export function RequestForm() {
       return;
     }
 
-    const device = MOCK_DEVICES.find(d => d.id.toString() === deviceId);
+    const device = devices?.find(d => d.id === deviceId);
     
     setIsGenerating(true);
     try {
       const result = await generateMaintenanceRequestDescription({
-        deviceName: device?.device_name || "جهاز طبي",
+        deviceName: device?.deviceName || "جهاز طبي",
         reportedProblem: title,
       });
       form.setValue("description", result.detailedDescription);
@@ -90,7 +102,21 @@ export function RequestForm() {
   }
 
   function onSubmit(values: z.infer<typeof formSchema>) {
-    console.log(values);
+    if (!user) return;
+
+    const requestData = {
+      hospitalId: user.uid,
+      deviceId: values.deviceId,
+      title: values.title,
+      urgency: values.urgency,
+      description: values.description,
+      status: 'open',
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    };
+
+    addDocumentNonBlocking(collection(firestore, 'maintenanceRequests'), requestData);
+    
     toast({
       title: "تم إرسال الطلب",
       description: "طلب الصيانة الخاص بك متاح الآن للمهندسين.",
@@ -102,7 +128,7 @@ export function RequestForm() {
     <Card className="max-w-2xl mx-auto shadow-xl border-t-4 border-t-primary">
       <CardHeader>
         <CardTitle className="text-2xl font-bold flex items-center gap-2">
-          إرسال طلب صيانة
+          إرسال طلب صيانة جديد
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -116,16 +142,19 @@ export function RequestForm() {
                   <FormLabel>الجهاز المتأثر</FormLabel>
                   <Select onValueChange={field.onChange} defaultValue={field.value}>
                     <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="اختر الجهاز..." />
+                      <SelectTrigger disabled={devicesLoading}>
+                        <SelectValue placeholder={devicesLoading ? "جاري تحميل الأجهزة..." : "اختر الجهاز..."} />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {MOCK_DEVICES.map(device => (
-                        <SelectItem key={device.id} value={device.id.toString()}>
-                          {device.device_name} ({device.serial_number})
+                      {devices?.map(device => (
+                        <SelectItem key={device.id} value={device.id}>
+                          {device.deviceName} ({device.serialNumber})
                         </SelectItem>
                       ))}
+                      {devices?.length === 0 && (
+                        <SelectItem value="none" disabled>لا توجد أجهزة مسجلة</SelectItem>
+                      )}
                     </SelectContent>
                   </Select>
                   <FormMessage />

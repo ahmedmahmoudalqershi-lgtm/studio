@@ -1,10 +1,11 @@
+
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Wrench, Hospital, ShieldCheck, Activity } from 'lucide-react';
 
 export default function Home() {
   return (
-    <div className="flex flex-col min-h-screen bg-background">
+    <div className="flex flex-col min-h-screen bg-background" dir="rtl">
       {/* Hero Section */}
       <section className="flex-1 flex flex-col items-center justify-center p-6 text-center space-y-8">
         <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-1000">
@@ -20,13 +21,13 @@ export default function Home() {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full max-w-md animate-in fade-in slide-in-from-bottom-8 duration-1000 delay-200">
-          <Link href="/dashboard?role=hospital">
+          <Link href="/login">
             <Button size="lg" className="w-full h-24 text-lg flex flex-col gap-2 rounded-2xl shadow-lg transition-transform hover:scale-105 active:scale-95">
               <Hospital className="h-6 w-6" />
               أنا أمثل مستشفى
             </Button>
           </Link>
-          <Link href="/dashboard?role=engineer">
+          <Link href="/login">
             <Button size="lg" variant="outline" className="w-full h-24 text-lg flex flex-col gap-2 rounded-2xl border-2 border-primary/20 bg-white/50 backdrop-blur-sm transition-transform hover:scale-105 active:scale-95">
               <ShieldCheck className="h-6 w-6 text-primary" />
               أنا مهندس صيانة
@@ -35,7 +36,7 @@ export default function Home() {
         </div>
 
         {/* Features */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 pt-12 text-left animate-in fade-in duration-1000 delay-500">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 pt-12 text-right animate-in fade-in duration-1000 delay-500">
           <div className="bg-white p-6 rounded-2xl border shadow-sm space-y-3">
             <div className="bg-blue-100 w-10 h-10 rounded-full flex items-center justify-center">
               <Activity className="h-5 w-5 text-primary" />
