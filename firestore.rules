@@ -1,3 +1,4 @@
+
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -5,8 +6,7 @@ service cloud.firestore {
     /**
      * CORE PHILOSOPHY
      * This ruleset implements a robust, role-based security model.
-     * UPDATED: Simplified read rules for maintenanceRequests to prevent permission errors 
-     * caused by missing indexes during initial deployment.
+     * UPDATED: Added hospitalId to bids for authorization independence.
      */
 
     // --- Helper Functions ---
@@ -67,14 +67,15 @@ service cloud.firestore {
     }
 
     match /maintenanceRequests/{requestId} {
-      // Allow any signed-in user to read/list requests to facilitate the marketplace.
       allow read: if isSignedIn();
       allow create: if isSignedIn() && isDataOwner(request.resource.data.hospitalId);
       allow update: if (isExistingOwner(resource.data.hospitalId) || isDataOwner(resource.data.assignedEngineerId) || isAdmin());
       allow delete: if isExistingOwner(resource.data.hospitalId) || isAdmin();
 
       match /bids/{bidId} {
+        // Engineer can create a bid
         allow create: if isSignedIn() && isDataOwner(request.resource.data.engineerId);
+        // Both the engineer and the hospital owning the request can list/get bids
         allow get, list: if isSignedIn() && (isDataOwner(resource.data.engineerId) || isDataOwner(resource.data.hospitalId) || isAdmin());
         allow update: if isExistingOwner(resource.data.engineerId) || isDataOwner(resource.data.hospitalId) || isAdmin();
         allow delete: if isExistingOwner(resource.data.engineerId) || isAdmin();

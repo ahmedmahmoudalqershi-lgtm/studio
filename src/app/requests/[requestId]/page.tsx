@@ -66,14 +66,23 @@ export default function RequestDetailsPage() {
   
   const { data: request, isLoading: requestLoading } = useDoc(requestRef);
 
+  const isOwner = user?.uid === request?.hospitalId;
+
   const bidsQuery = useMemoFirebase(() => {
-    if (!firestore || !requestId || !user) return null;
-    return query(collection(firestore, 'maintenanceRequests', requestId as string, 'bids'));
-  }, [firestore, requestId, user]);
+    if (!firestore || !requestId || !user || !request) return null;
+    const bidsCol = collection(firestore, 'maintenanceRequests', requestId as string, 'bids');
+    
+    // Authorization Independence: Use filters that match security rules
+    if (user.uid === request.hospitalId) {
+      // Hospital sees all bids for their request
+      return query(bidsCol, where('hospitalId', '==', user.uid));
+    } else {
+      // Engineers see only their own bids
+      return query(bidsCol, where('engineerId', '==', user.uid));
+    }
+  }, [firestore, requestId, user?.uid, request?.hospitalId]);
   
   const { data: bids, isLoading: bidsLoading } = useCollection(bidsQuery);
-
-  const isOwner = user?.uid === request?.hospitalId;
 
   const handleAcceptBid = (bid: any) => {
     if (!firestore || !request) return;
@@ -166,12 +175,13 @@ export default function RequestDetailsPage() {
   }
 
   function handleSendBid() {
-    if (!user || !requestId || !firestore) return;
+    if (!user || !requestId || !firestore || !request) return;
     setIsSubmittingBid(true);
     const bidsCol = collection(firestore, 'maintenanceRequests', requestId as string, 'bids');
     addDocumentNonBlocking(bidsCol, {
       engineerId: user.uid,
       requestId: requestId,
+      hospitalId: request.hospitalId, // Denormalize hospitalId for security rules
       price: Number(bidPrice),
       estimatedDays: Number(bidDays),
       description: bidDesc,
@@ -271,19 +281,19 @@ export default function RequestDetailsPage() {
               </CardContent>
             </Card>
 
-            {isOwner && request.status === 'open' && (
+            {(isOwner || !isOwner) && request.status === 'open' && (
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  {bids && bids.length > 0 && (
+                  {isOwner && bids && bids.length > 0 && (
                     <Button onClick={handleAnalyzeBids} disabled={isAnalyzing} variant="outline" className="gap-2 bg-secondary/10">
                       {isAnalyzing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
                       تحليل العروض بالذكاء الاصطناعي
                     </Button>
                   )}
-                  <h2 className="text-xl font-bold">العروض المستلمة ({bids?.length || 0})</h2>
+                  <h2 className="text-xl font-bold">{isOwner ? `العروض المستلمة (${bids?.length || 0})` : 'عروضك لهذا الطلب'}</h2>
                 </div>
 
-                {aiAnalysis && (
+                {isOwner && aiAnalysis && (
                   <Card className="bg-primary/5 border-primary/20 space-y-3 p-6 rounded-2xl">
                     <p className="font-bold text-primary flex items-center gap-2 justify-end"><Sparkles className="h-4 w-4" /> توصية الذكاء الاصطناعي:</p>
                     <div className="bg-white p-4 rounded-xl shadow-sm text-right">
@@ -303,7 +313,7 @@ export default function RequestDetailsPage() {
                         <div className="flex justify-between items-start gap-4">
                           <div className="flex-1 text-right">
                             <div className="flex items-center gap-2 mb-2 justify-end">
-                              <span className="font-bold">مهندس صيانة معتمد</span>
+                              <span className="font-bold">{bid.engineerId === user?.uid ? 'عرضك الحالي' : 'مهندس صيانة معتمد'}</span>
                               <User className="h-4 w-4 text-primary" />
                             </div>
                             <p className="text-sm text-muted-foreground leading-relaxed">{bid.description}</p>
@@ -311,7 +321,7 @@ export default function RequestDetailsPage() {
                           </div>
                           <div className="text-left space-y-3">
                             <Badge variant="outline" className="px-3 py-1">{bid.estimatedDays} أيام عمل</Badge>
-                            <Button size="lg" className="w-full rounded-xl shadow-md" onClick={() => handleAcceptBid(bid)}>قبول العرض</Button>
+                            {isOwner && <Button size="lg" className="w-full rounded-xl shadow-md" onClick={() => handleAcceptBid(bid)}>قبول العرض</Button>}
                           </div>
                         </div>
                       </CardContent>
@@ -319,7 +329,7 @@ export default function RequestDetailsPage() {
                   ))}
                   {(!bids || bids.length === 0) && (
                     <div className="text-center py-12 bg-muted/20 rounded-3xl border-2 border-dashed">
-                      <p className="text-muted-foreground">في انتظار عروض المهندسين...</p>
+                      <p className="text-muted-foreground">{isOwner ? 'في انتظار عروض المهندسين...' : 'لم تقدم عرضاً لهذا الطلب بعد.'}</p>
                     </div>
                   )}
                 </div>
