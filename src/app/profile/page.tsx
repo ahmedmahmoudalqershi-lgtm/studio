@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
 import { 
   Mail, 
   ShieldCheck, 
@@ -20,7 +21,8 @@ import {
   Phone,
   Briefcase,
   Hospital,
-  Upload
+  Bell,
+  BellRing
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { doc, serverTimestamp } from 'firebase/firestore';
@@ -34,6 +36,7 @@ export default function ProfilePage() {
   
   const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [notificationsEnabled, setNotificationsEnabled] = useState(false);
 
   const userRef = useMemoFirebase(() => {
     if (!firestore || !user) return null;
@@ -55,6 +58,11 @@ export default function ProfilePage() {
   useEffect(() => {
     if (profile) {
       setFormData(profile);
+    }
+    
+    // فحص حالة أذن التنبيهات
+    if (typeof window !== 'undefined' && 'Notification' in window) {
+      setNotificationsEnabled(Notification.permission === 'granted');
     }
   }, [profile]);
 
@@ -83,16 +91,46 @@ export default function ProfilePage() {
     }
   };
 
+  const toggleNotifications = async () => {
+    if (typeof window === 'undefined' || !('Notification' in window)) {
+      toast({
+        variant: "destructive",
+        title: "غير مدعوم",
+        description: "متصفحك لا يدعم الإشعارات المنبثقة.",
+      });
+      return;
+    }
+
+    if (Notification.permission === 'denied') {
+      toast({
+        variant: "destructive",
+        title: "تم حظر الإشعارات",
+        description: "يرجى تفعيل الإشعارات من إعدادات المتصفح أولاً.",
+      });
+      return;
+    }
+
+    const permission = await Notification.requestPermission();
+    if (permission === 'granted') {
+      setNotificationsEnabled(true);
+      toast({
+        title: "تم تفعيل الإشعارات",
+        description: "ستصلك الآن تنبيهات حقيقية على جهازك.",
+      });
+    } else {
+      setNotificationsEnabled(false);
+    }
+  };
+
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    // التأكد من حجم الملف (يفضل أقل من 1 ميجابايت لـ Firestore كـ Base64)
     if (file.size > 1024 * 1024) {
       toast({
         variant: "destructive",
         title: "الملف كبير جداً",
-        description: "يرجى اختيار صورة بحجم أقل من 1 ميجابايت لضمان سرعة التحميل.",
+        description: "يرجى اختيار صورة بحجم أقل من 1 ميجابايت.",
       });
       return;
     }
@@ -106,7 +144,7 @@ export default function ProfilePage() {
           profileImageUrl: base64String,
           updatedAt: serverTimestamp()
         });
-        toast({ title: "تم تحديث الصورة", description: "تم تحديث صورتك الحقيقية بنجاح." });
+        toast({ title: "تم تحديث الصورة", description: "تم تحديث صورتك الشخصية بنجاح." });
       }
       setIsUploading(false);
     };
@@ -133,62 +171,77 @@ export default function ProfilePage() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          <Card className="md:col-span-1 border-none shadow-xl overflow-hidden rounded-3xl">
-            <div className="h-32 bg-gradient-to-br from-primary to-primary/80 w-full" />
-            <CardContent className="pt-0 flex flex-col items-center text-center -mt-16">
-              <div className="relative group">
-                <Avatar className="h-32 w-32 ring-8 ring-white shadow-2xl overflow-hidden">
-                  <AvatarImage 
-                    src={currentProfileImage} 
-                    className="object-cover"
+          <div className="space-y-6 md:col-span-1">
+            <Card className="border-none shadow-xl overflow-hidden rounded-3xl">
+              <div className="h-32 bg-gradient-to-br from-primary to-primary/80 w-full" />
+              <CardContent className="pt-0 flex flex-col items-center text-center -mt-16">
+                <div className="relative group">
+                  <Avatar className="h-32 w-32 ring-8 ring-white shadow-2xl overflow-hidden">
+                    <AvatarImage 
+                      src={currentProfileImage} 
+                      className="object-cover"
+                    />
+                    <AvatarFallback className="text-4xl font-bold bg-muted text-primary">
+                      {user?.email?.[0].toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  
+                  <button 
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isUploading}
+                    className="absolute inset-0 bg-black/40 rounded-full opacity-0 group-hover:opacity-100 transition-all flex flex-col items-center justify-center cursor-pointer border-none"
+                  >
+                    {isUploading ? (
+                      <Loader2 className="text-white h-8 w-8 animate-spin" />
+                    ) : (
+                      <>
+                        <Camera className="text-white h-8 w-8" />
+                        <span className="text-white text-[10px] mt-1">تغيير الصورة</span>
+                      </>
+                    )}
+                  </button>
+                  <input 
+                    type="file" 
+                    ref={fileInputRef} 
+                    className="hidden" 
+                    accept="image/*" 
+                    onChange={handleFileChange} 
                   />
-                  <AvatarFallback className="text-4xl font-bold bg-muted text-primary">
-                    {user?.email?.[0].toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
-                
-                <button 
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={isUploading}
-                  className="absolute inset-0 bg-black/40 rounded-full opacity-0 group-hover:opacity-100 transition-all flex flex-col items-center justify-center cursor-pointer border-none"
-                >
-                  {isUploading ? (
-                    <Loader2 className="text-white h-8 w-8 animate-spin" />
-                  ) : (
-                    <>
-                      <Camera className="text-white h-8 w-8" />
-                      <span className="text-white text-[10px] mt-1">تغيير الصورة</span>
-                    </>
-                  )}
-                </button>
-                <input 
-                  type="file" 
-                  ref={fileInputRef} 
-                  className="hidden" 
-                  accept="image/*" 
-                  onChange={handleFileChange} 
-                />
-              </div>
-              
-              <h2 className="mt-4 text-xl font-black text-foreground">
-                {role === 'hospital' ? profile?.hospitalName : profile?.fullName}
-              </h2>
-              
-              <Badge variant="secondary" className="mt-2 px-4 py-1 rounded-lg">
-                {role === 'hospital' ? (
-                  <span className="flex items-center gap-1"><Hospital className="h-3 w-3" /> مستشفى</span>
-                ) : (
-                  <span className="flex items-center gap-1"><ShieldCheck className="h-3 w-3" /> مهندس معتمد</span>
-                )}
-              </Badge>
-
-              <div className="w-full border-t mt-8 pt-6 space-y-4">
-                <div className="flex items-center gap-3 text-sm text-muted-foreground justify-center">
-                  <Mail className="h-4 w-4" /> {user?.email}
                 </div>
+                
+                <h2 className="mt-4 text-xl font-black text-foreground">
+                  {role === 'hospital' ? profile?.hospitalName : profile?.fullName}
+                </h2>
+                
+                <Badge variant="secondary" className="mt-2 px-4 py-1 rounded-lg">
+                  {role === 'hospital' ? (
+                    <span className="flex items-center gap-1"><Hospital className="h-3 w-3" /> مستشفى</span>
+                  ) : (
+                    <span className="flex items-center gap-1"><ShieldCheck className="h-3 w-3" /> مهندس معتمد</span>
+                  )}
+                </Badge>
+              </CardContent>
+            </Card>
+
+            <Card className="border-none shadow-lg rounded-2xl p-6 space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="bg-primary/10 p-2 rounded-xl">
+                  <BellRing className="h-5 w-5 text-primary" />
+                </div>
+                <Label className="font-bold">تنبيهات المتصفح</Label>
               </div>
-            </CardContent>
-          </Card>
+              <p className="text-[10px] text-muted-foreground text-right leading-relaxed">
+                قم بتفعيل الإشعارات المنبثقة لتصلك تنبيهات حقيقية على جهازك فور قبول عرضك أو وصول رسالة جديدة.
+              </p>
+              <div className="flex items-center justify-between pt-2">
+                <Switch 
+                  checked={notificationsEnabled} 
+                  onCheckedChange={toggleNotifications}
+                />
+                <span className="text-sm font-medium">{notificationsEnabled ? "مفعلة" : "معطلة"}</span>
+              </div>
+            </Card>
+          </div>
 
           <Card className="md:col-span-2 border-none shadow-xl rounded-3xl">
             <CardHeader className="text-right border-b pb-4 mb-4">

@@ -34,6 +34,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { NotificationManager } from '@/components/NotificationManager';
 
 interface ShellProps {
   children: React.ReactNode;
@@ -132,6 +133,7 @@ export function Shell({ children }: ShellProps) {
 
   return (
     <div className="flex flex-col min-h-screen bg-slate-50">
+      <NotificationManager />
       <header className="sticky top-0 z-40 w-full border-b bg-white/80 backdrop-blur-md">
         <div className="container flex h-16 items-center justify-between px-6 mx-auto">
           <div className="flex items-center gap-3">
@@ -257,4 +259,3 @@ export function Shell({ children }: ShellProps) {
     </div>
   );
 }
-
