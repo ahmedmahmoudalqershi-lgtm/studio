@@ -38,8 +38,10 @@ export function Shell({ children, role }: ShellProps) {
   }, [user, isUserLoading, router]);
 
   const handleLogout = async () => {
-    await signOut(auth);
-    router.push('/');
+    if (auth) {
+      await signOut(auth);
+      router.push('/');
+    }
   };
 
   const navItems = role === 'hospital' ? [
