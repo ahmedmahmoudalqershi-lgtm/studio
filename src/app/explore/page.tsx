@@ -36,13 +36,13 @@ export default function ExploreRequestsPage() {
   return (
     <Shell role="engineer">
       <div className="space-y-6" dir="rtl">
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-4 text-right justify-end sm:justify-start">
+          <h1 className="text-3xl font-bold font-headline">استكشاف طلبات الصيانة</h1>
           <Link href="/dashboard">
             <Button variant="ghost" size="icon">
               <ArrowLeft className="h-5 w-5 rotate-180" />
             </Button>
           </Link>
-          <h1 className="text-3xl font-bold font-headline">استكشاف طلبات الصيانة</h1>
         </div>
 
         <div className="flex flex-col sm:flex-row gap-4">
@@ -50,7 +50,7 @@ export default function ExploreRequestsPage() {
             <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input 
               placeholder="ابحث عن أجهزة، أعطال، أو كلمات مفتاحية..." 
-              className="pr-10 h-12 rounded-xl"
+              className="pr-10 h-12 rounded-xl text-right"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -69,7 +69,7 @@ export default function ExploreRequestsPage() {
             {filteredRequests?.map(req => (
               <Card key={req.id} className="overflow-hidden hover:shadow-xl transition-all border-none shadow-md group">
                 <div className="h-2 bg-primary w-full" />
-                <CardHeader>
+                <CardHeader className="text-right">
                   <div className="flex justify-between items-start">
                     <Badge variant={req.urgency === 'critical' ? 'destructive' : 'outline'} className="rounded-md">
                       {req.urgency === 'critical' ? 'حرج فوري' : req.urgency === 'high' ? 'عاجل' : 'عادي'}
@@ -77,13 +77,13 @@ export default function ExploreRequestsPage() {
                   </div>
                   <CardTitle className="mt-3 group-hover:text-primary transition-colors">{req.title}</CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="space-y-4 text-right">
                   <p className="text-sm text-muted-foreground line-clamp-3 leading-relaxed">
                     {req.description}
                   </p>
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground pt-4 border-t">
-                    <MapPin className="h-3 w-3" />
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground pt-4 border-t justify-end">
                     <span>الرياض، مستشفى الملك عبدالعزيز</span>
+                    <MapPin className="h-3 w-3" />
                   </div>
                   <Link href={`/requests/${req.id}`}>
                     <Button className="w-full mt-2 rounded-xl">عرض التفاصيل والتقديم</Button>
@@ -91,7 +91,7 @@ export default function ExploreRequestsPage() {
                 </CardContent>
               </Card>
             ))}
-            {filteredRequests?.length === 0 && (
+            {filteredRequests?.length === 0 && !isLoading && (
               <div className="col-span-full py-20 text-center space-y-4">
                 <Wrench className="h-16 w-16 text-muted/20 mx-auto" />
                 <p className="text-xl text-muted-foreground font-medium">لا توجد طلبات مطابقة لبحثك حالياً.</p>

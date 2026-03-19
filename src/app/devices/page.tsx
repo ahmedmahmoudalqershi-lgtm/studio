@@ -4,21 +4,20 @@
 import React, { useState } from 'react';
 import { Shell } from '@/components/layout/Shell';
 import { useCollection, useUser, useFirestore, useMemoFirebase } from '@/firebase';
-import { collection, query, where, serverTimestamp } from 'firebase/firestore';
+import { collection, query, where, serverTimestamp, doc } from 'firebase/firestore';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { cn } from '@/lib/utils';
 import { 
   Plus, 
   Stethoscope, 
   Search, 
   Settings, 
   AlertCircle,
-  CheckCircle2,
-  Trash2,
-  Loader2
+  Trash2
 } from 'lucide-react';
 import {
   Dialog,
@@ -30,7 +29,6 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { addDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
-import { doc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -52,7 +50,7 @@ export default function DevicesPage() {
   const devicesQuery = useMemoFirebase(() => {
     if (!firestore || !user) return null;
     return query(collection(firestore, 'devices'), where('hospitalId', '==', user.uid));
-  }, [firestore, user]);
+  }, [firestore, user?.uid]);
 
   const { data: devices, isLoading } = useCollection(devicesQuery);
 
@@ -96,8 +94,8 @@ export default function DevicesPage() {
       <div className="space-y-6" dir="rtl">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
-            <h1 className="text-3xl font-bold font-headline">إدارة الأجهزة الطبية</h1>
-            <p className="text-muted-foreground">قم بتسجيل ومتابعة حالة جميع أجهزتك الطبية.</p>
+            <h1 className="text-3xl font-bold font-headline text-right">إدارة الأجهزة الطبية</h1>
+            <p className="text-muted-foreground text-right">قم بتسجيل ومتابعة حالة جميع أجهزتك الطبية.</p>
           </div>
           
           <Dialog open={isAdding} onOpenChange={setIsAdding}>
@@ -124,7 +122,7 @@ export default function DevicesPage() {
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
+                  <div className="space-y-2 text-right">
                     <Label htmlFor="model">الموديل</Label>
                     <Input 
                       id="model" 
@@ -133,7 +131,7 @@ export default function DevicesPage() {
                       onChange={(e) => setNewDevice({...newDevice, model: e.target.value})}
                     />
                   </div>
-                  <div className="space-y-2">
+                  <div className="space-y-2 text-right">
                     <Label htmlFor="sn">الرقم التسلسلي</Label>
                     <Input 
                       id="sn" 
@@ -143,7 +141,7 @@ export default function DevicesPage() {
                     />
                   </div>
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-2 text-right">
                   <Label htmlFor="manufacturer">الشركة المصنعة</Label>
                   <Input 
                     id="manufacturer" 
@@ -164,7 +162,7 @@ export default function DevicesPage() {
           <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input 
             placeholder="ابحث باسم الجهاز أو الرقم التسلسلي..." 
-            className="pr-10 h-12 rounded-xl"
+            className="pr-10 h-12 rounded-xl text-right"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
@@ -191,14 +189,14 @@ export default function DevicesPage() {
                       {device.status === 'operational' ? 'يعمل بكفاءة' : 'بحاجة لصيانة'}
                     </Badge>
                   </div>
-                  <CardTitle className="mt-4">{device.deviceName}</CardTitle>
+                  <CardTitle className="mt-4 text-right">{device.deviceName}</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="grid grid-cols-2 gap-2 text-sm">
-                    <div className="text-muted-foreground">الشركة:</div>
+                  <div className="grid grid-cols-2 gap-2 text-sm text-right">
                     <div className="font-medium">{device.manufacturer}</div>
-                    <div className="text-muted-foreground">الرقم التسلسلي:</div>
+                    <div className="text-muted-foreground">:الشركة</div>
                     <div className="font-medium">{device.serialNumber}</div>
+                    <div className="text-muted-foreground">:الرقم التسلسلي</div>
                   </div>
                   <div className="flex gap-2 pt-4 border-t">
                     <Button variant="outline" size="sm" className="flex-1 gap-1">
@@ -216,7 +214,7 @@ export default function DevicesPage() {
                 </CardContent>
               </Card>
             ))}
-            {filteredDevices?.length === 0 && (
+            {filteredDevices?.length === 0 && !isLoading && (
               <div className="col-span-full py-20 text-center space-y-4 border-2 border-dashed rounded-3xl">
                 <AlertCircle className="h-12 w-12 text-muted/20 mx-auto" />
                 <p className="text-xl text-muted-foreground">لا توجد أجهزة مسجلة حالياً.</p>

@@ -9,18 +9,16 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
 import { 
-  User, 
   Mail, 
-  Phone, 
   ShieldCheck, 
-  Hospital,
   Save,
   Loader2,
   Camera
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { collection, query, where, limit, updateDoc, doc } from 'firebase/firestore';
+import { collection, query, where, limit } from 'firebase/firestore';
 
 export default function ProfilePage() {
   const { user } = useUser();
@@ -28,19 +26,16 @@ export default function ProfilePage() {
   const { toast } = useToast();
   const [isSaving, setIsSaving] = useState(false);
 
-  // جلب الملف الشخصي بناءً على الدور (تبسيط للـ MVP)
-  // سنفترض وجود مجموعة ملفات شخصية واحدة أو اختيار المناسب
   const profileQuery = useMemoFirebase(() => {
     if (!firestore || !user) return null;
     return query(collection(firestore, 'engineerProfiles'), where('userId', '==', user.uid), limit(1));
-  }, [firestore, user]);
+  }, [firestore, user?.uid]);
 
   const { data: profiles, isLoading } = useCollection(profileQuery);
   const profile = profiles?.[0];
 
   const handleSave = async () => {
     setIsSaving(true);
-    // محاكاة حفظ البيانات
     setTimeout(() => {
       setIsSaving(false);
       toast({
@@ -51,9 +46,9 @@ export default function ProfilePage() {
   };
 
   return (
-    <Shell role="hospital">
+    <Shell role={profile ? "engineer" : "hospital"}>
       <div className="max-w-4xl mx-auto space-y-8" dir="rtl">
-        <div>
+        <div className="text-right">
           <h1 className="text-3xl font-bold font-headline">الملف الشخصي</h1>
           <p className="text-muted-foreground">إدارة معلومات حسابك وتفضيلات الإشعارات.</p>
         </div>
@@ -83,41 +78,41 @@ export default function ProfilePage() {
           </Card>
 
           <Card className="md:col-span-2 border-none shadow-lg">
-            <CardHeader>
+            <CardHeader className="text-right">
               <CardTitle>المعلومات الأساسية</CardTitle>
               <CardDescription>هذه المعلومات ستظهر للأطراف الأخرى عند التعامل مع الطلبات.</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-6">
+            <CardContent className="space-y-6 text-right">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>الاسم الكامل</Label>
-                  <Input defaultValue={profile?.fullName || ""} placeholder="أدخل اسمك الكامل" />
+                  <Input defaultValue={profile?.fullName || ""} placeholder="أدخل اسمك الكامل" className="text-right" />
                 </div>
                 <div className="space-y-2">
                   <Label>رقم الجوال</Label>
-                  <Input defaultValue={profile?.phone || ""} placeholder="05xxxxxxxx" />
+                  <Input defaultValue={profile?.phone || ""} placeholder="05xxxxxxxx" className="text-right" />
                 </div>
               </div>
 
               {profile && (
                 <div className="space-y-4 pt-4 border-t">
-                  <h3 className="font-bold flex items-center gap-2">
-                    <ShieldCheck className="h-4 w-4 text-primary" /> تفاصيل المهنة
+                  <h3 className="font-bold flex items-center gap-2 justify-end">
+                    تفاصيل المهنة <ShieldCheck className="h-4 w-4 text-primary" />
                   </h3>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label>التخصص</Label>
-                      <Input defaultValue={profile.specialization} />
+                      <Input defaultValue={profile.specialization} className="text-right" />
                     </div>
                     <div className="space-y-2">
                       <Label>سنوات الخبرة</Label>
-                      <Input type="number" defaultValue={profile.yearsExperience} />
+                      <Input type="number" defaultValue={profile.yearsExperience} className="text-right" />
                     </div>
                   </div>
                 </div>
               )}
 
-              <div className="pt-6">
+              <div className="pt-6 flex justify-end">
                 <Button onClick={handleSave} disabled={isSaving} className="w-full sm:w-auto gap-2 px-8">
                   {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                   حفظ التغييرات
