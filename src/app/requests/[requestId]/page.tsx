@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState } from 'react';
@@ -106,7 +107,7 @@ export default function RequestDetailsPage() {
       updatedAt: serverTimestamp(),
     });
 
-    // إضافة التقييم
+    // إضافة التقييم في مجموعة مستقلة
     addDocumentNonBlocking(collection(firestore, 'reviews'), {
       requestId: request.id,
       hospitalId: user?.uid,
@@ -119,7 +120,6 @@ export default function RequestDetailsPage() {
     // تحديث إحصائيات المهندس
     updateDocumentNonBlocking(doc(firestore, 'engineerProfiles', request.assignedEngineerId), {
       totalJobs: increment(1),
-      // ملاحظة: تحديث التقييم العام يفضل أن يكون عبر Cloud Function، للتبسيط سنقوم بزيادته هنا
       updatedAt: serverTimestamp(),
     });
 
@@ -172,6 +172,7 @@ export default function RequestDetailsPage() {
     const bidsCol = collection(firestore, 'maintenanceRequests', requestId as string, 'bids');
     addDocumentNonBlocking(bidsCol, {
       engineerId: user.uid,
+      requestId: requestId,
       price: Number(bidPrice),
       estimatedDays: Number(bidDays),
       description: bidDesc,
@@ -224,9 +225,12 @@ export default function RequestDetailsPage() {
                         <Star key={s} className={`h-10 w-10 cursor-pointer ${reviewRating >= s ? "text-yellow-500 fill-yellow-500" : "text-muted"}`} onClick={() => setReviewRating(s)} />
                       ))}
                     </div>
-                    <Textarea placeholder="اكتب رأيك في عمل المهندس..." value={reviewComment} onChange={(e) => setReviewComment(e.target.value)} />
+                    <div className="space-y-2 text-right">
+                      <Label>ملاحظات إضافية</Label>
+                      <Textarea placeholder="اكتب رأيك في عمل المهندس..." value={reviewComment} onChange={(e) => setReviewComment(e.target.value)} />
+                    </div>
                   </div>
-                  <DialogFooter><Button onClick={handleCompleteJob} className="w-full">حفظ وإغلاق</Button></DialogFooter>
+                  <DialogFooter><Button onClick={handleCompleteJob} className="w-full">حفظ وإغلاق الطلب</Button></DialogFooter>
                 </DialogContent>
               </Dialog>
             )}
@@ -243,7 +247,7 @@ export default function RequestDetailsPage() {
             <CardContent className="space-y-4">
               <div className="bg-white p-4 rounded-lg border border-blue-100">
                 <p className="font-bold text-blue-800">السبب المحتمل: {troubleshootResult.potentialCause}</p>
-                <ul className="mt-2 space-y-1 text-sm list-disc pr-4">
+                <ul className="mt-2 space-y-1 text-sm list-disc pr-4 text-right">
                   {troubleshootResult.steps.map((s, i) => <li key={i}>{s}</li>)}
                 </ul>
               </div>
@@ -259,11 +263,11 @@ export default function RequestDetailsPage() {
           <div className="lg:col-span-2 space-y-6">
             <Card className="border-none shadow-md">
               <CardContent className="p-8">
-                <h3 className="text-xl font-bold mb-4">وصف الطلب</h3>
-                <p className="text-muted-foreground whitespace-pre-wrap leading-relaxed">{request.description}</p>
-                <div className="flex gap-4 mt-6 pt-6 border-t text-sm text-muted-foreground">
-                  <span className="flex items-center gap-1"><Clock className="h-4 w-4" /> الأهمية: {request.urgency}</span>
+                <h3 className="text-xl font-bold mb-4 text-right">وصف الطلب</h3>
+                <p className="text-muted-foreground whitespace-pre-wrap leading-relaxed text-right">{request.description}</p>
+                <div className="flex gap-4 mt-6 pt-6 border-t text-sm text-muted-foreground justify-end">
                   <span className="flex items-center gap-1"><Calendar className="h-4 w-4" /> تاريخ الطلب: {request.createdAt?.toDate?.()?.toLocaleDateString('ar-SA') || 'اليوم'}</span>
+                  <span className="flex items-center gap-1"><Clock className="h-4 w-4" /> الأهمية: {request.urgency}</span>
                 </div>
               </CardContent>
             </Card>
@@ -271,46 +275,54 @@ export default function RequestDetailsPage() {
             {isOwner && request.status === 'open' && (
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <h2 className="text-xl font-bold">العروض المستلمة ({bids?.length || 0})</h2>
                   {bids && bids.length > 0 && (
                     <Button onClick={handleAnalyzeBids} disabled={isAnalyzing} variant="outline" className="gap-2 bg-secondary/10">
                       {isAnalyzing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-                      تحليل العروض
+                      تحليل العروض بالذكاء الاصطناعي
                     </Button>
                   )}
+                  <h2 className="text-xl font-bold">العروض المستلمة ({bids?.length || 0})</h2>
                 </div>
 
                 {aiAnalysis && (
-                  <div className="bg-primary/5 p-4 rounded-xl border border-primary/20 space-y-3">
-                    <p className="font-bold text-primary flex items-center gap-2"><Sparkles className="h-4 w-4" /> توصية الذكاء الاصطناعي:</p>
-                    <div className="bg-white p-4 rounded-lg shadow-sm">
+                  <Card className="bg-primary/5 border-primary/20 space-y-3 p-6 rounded-2xl">
+                    <p className="font-bold text-primary flex items-center gap-2 justify-end"><Sparkles className="h-4 w-4" /> توصية الذكاء الاصطناعي:</p>
+                    <div className="bg-white p-4 rounded-xl shadow-sm text-right">
                       <p className="font-black text-lg">{aiAnalysis.bestOption.engineerName}</p>
                       <p className="text-sm text-muted-foreground mt-1">{aiAnalysis.bestOption.reason}</p>
+                      <div className="mt-4 p-3 bg-amber-50 rounded-lg text-xs text-amber-800 border border-amber-100">
+                        <strong>تحليل المخاطر:</strong> {aiAnalysis.riskAnalysis}
+                      </div>
                     </div>
-                  </div>
+                  </Card>
                 )}
 
                 <div className="space-y-4">
                   {bids?.map(bid => (
-                    <Card key={bid.id} className="hover:shadow-lg transition-shadow">
+                    <Card key={bid.id} className="hover:shadow-lg transition-shadow overflow-hidden border-none shadow-sm">
                       <CardContent className="p-6">
                         <div className="flex justify-between items-start gap-4">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-2">
+                          <div className="flex-1 text-right">
+                            <div className="flex items-center gap-2 mb-2 justify-end">
+                              <span className="font-bold">مهندس صيانة معتمد</span>
                               <User className="h-4 w-4 text-primary" />
-                              <span className="font-bold">مهندس متخصص</span>
                             </div>
-                            <p className="text-sm text-muted-foreground">{bid.description}</p>
-                            <p className="mt-2 text-primary font-black text-lg">{bid.price} ر.س</p>
+                            <p className="text-sm text-muted-foreground leading-relaxed">{bid.description}</p>
+                            <p className="mt-4 text-primary font-black text-2xl">{bid.price} ر.س</p>
                           </div>
-                          <div className="text-left space-y-2">
-                            <Badge variant="outline">{bid.estimatedDays} أيام</Badge>
-                            <Button size="sm" className="w-full" onClick={() => handleAcceptBid(bid)}>قبول العرض</Button>
+                          <div className="text-left space-y-3">
+                            <Badge variant="outline" className="px-3 py-1">{bid.estimatedDays} أيام عمل</Badge>
+                            <Button size="lg" className="w-full rounded-xl shadow-md" onClick={() => handleAcceptBid(bid)}>قبول العرض</Button>
                           </div>
                         </div>
                       </CardContent>
                     </Card>
                   ))}
+                  {(!bids || bids.length === 0) && (
+                    <div className="text-center py-12 bg-muted/20 rounded-3xl border-2 border-dashed">
+                      <p className="text-muted-foreground">في انتظار عروض المهندسين...</p>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
@@ -318,15 +330,36 @@ export default function RequestDetailsPage() {
 
           <div className="space-y-6">
             {!isOwner && request.status === 'open' && (
-              <Card className="shadow-lg border-t-4 border-t-primary">
-                <CardHeader><CardTitle>تقديم عرض صيانة</CardTitle></CardHeader>
-                <CardContent className="space-y-4">
-                  <Input type="number" placeholder="السعر (ر.س)" value={bidPrice} onChange={(e) => setBidPrice(e.target.value)} />
-                  <Input type="number" placeholder="المدة المتوقعة (أيام)" value={bidDays} onChange={(e) => setBidDays(e.target.value)} />
-                  <Textarea placeholder="تفاصيل العرض التقنية..." value={bidDesc} onChange={(e) => setBidDesc(e.target.value)} />
-                  <Button className="w-full h-12" onClick={handleSendBid} disabled={isSubmittingBid || !bidPrice || !bidDays}>
-                    {isSubmittingBid ? <Loader2 className="h-4 w-4 animate-spin" /> : 'إرسال العرض'}
+              <Card className="shadow-lg border-t-4 border-t-primary rounded-3xl overflow-hidden">
+                <CardHeader className="text-right"><CardTitle>تقديم عرض صيانة</CardTitle></CardHeader>
+                <CardContent className="space-y-4 text-right">
+                  <div className="space-y-2">
+                    <Label>السعر المقترح (ريال)</Label>
+                    <Input type="number" placeholder="0.00" value={bidPrice} onChange={(e) => setBidPrice(e.target.value)} className="h-12 rounded-xl" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>المدة المتوقعة (أيام)</Label>
+                    <Input type="number" placeholder="مثال: 3" value={bidDays} onChange={(e) => setBidDays(e.target.value)} className="h-12 rounded-xl" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>تفاصيل العرض التقنية</Label>
+                    <Textarea placeholder="اشرح كيف ستقوم بالإصلاح..." value={bidDesc} onChange={(e) => setBidDesc(e.target.value)} className="min-h-[120px] rounded-xl" />
+                  </div>
+                  <Button className="w-full h-14 text-lg rounded-2xl shadow-xl shadow-primary/20 mt-4" onClick={handleSendBid} disabled={isSubmittingBid || !bidPrice || !bidDays}>
+                    {isSubmittingBid ? <Loader2 className="h-4 w-4 animate-spin" /> : 'إرسال عرضي الآن'}
                   </Button>
+                </CardContent>
+              </Card>
+            )}
+
+            {request.status !== 'open' && (
+              <Card className="bg-primary/5 border-primary/20 rounded-3xl">
+                <CardContent className="p-6 text-center space-y-4">
+                  <div className="bg-white w-16 h-16 rounded-full flex items-center justify-center mx-auto shadow-sm">
+                    <ShieldAlert className="h-8 w-8 text-primary" />
+                  </div>
+                  <h4 className="font-bold">حالة الطلب: {request.status === 'assigned' ? 'تم الإسناد' : 'مكتمل'}</h4>
+                  <p className="text-xs text-muted-foreground">هذا الطلب لم يعد متاحاً لتقديم عروض جديدة.</p>
                 </CardContent>
               </Card>
             )}

@@ -40,23 +40,24 @@ export function Shell({ children }: ShellProps) {
   const auth = useAuth();
   const firestore = useFirestore();
 
+  // جلب بيانات الدور
   const userRef = useMemoFirebase(() => {
     if (!firestore || !user) return null;
     return doc(firestore, 'users', user.uid);
   }, [firestore, user?.uid]);
-
-  const { data: userData, isLoading: isRoleLoading } = useDoc(userRef);
+  const { data: userData } = useDoc(userRef);
 
   const userRole = userData?.role || 'hospital';
   
+  // جلب الملف الشخصي للصور والأسماء الحقيقية
   const profileRef = useMemoFirebase(() => {
     if (!firestore || !user) return null;
     const collectionName = userRole === 'hospital' ? 'hospitalProfiles' : 'engineerProfiles';
     return doc(firestore, collectionName, user.uid);
   }, [firestore, user?.uid, userRole]);
-
   const { data: profile } = useDoc(profileRef);
 
+  // الإشعارات
   const notificationsQuery = useMemoFirebase(() => {
     if (!firestore || !user) return null;
     return query(
@@ -65,7 +66,6 @@ export function Shell({ children }: ShellProps) {
       limit(5)
     );
   }, [firestore, user?.uid]);
-
   const { data: notifications } = useCollection(notificationsQuery);
 
   useEffect(() => {
@@ -93,7 +93,7 @@ export function Shell({ children }: ShellProps) {
     { name: 'الملف الشخصي', icon: User, href: '/profile' },
   ];
 
-  if (isUserLoading || isRoleLoading) {
+  if (isUserLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <Wrench className="h-10 w-10 text-primary animate-spin" />
@@ -126,13 +126,13 @@ export function Shell({ children }: ShellProps) {
                   )}
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-80 rounded-2xl p-2" dir="rtl">
-                <DropdownMenuLabel className="font-bold px-3 py-2">الإشعارات</DropdownMenuLabel>
+              <DropdownMenuContent align="end" className="w-80 rounded-2xl p-2 shadow-2xl" dir="rtl">
+                <DropdownMenuLabel className="font-bold px-3 py-2 text-right">الإشعارات الأخيرة</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 {notifications && notifications.length > 0 ? (
                   notifications.map((notif) => (
-                    <DropdownMenuItem key={notif.id} className="flex flex-col items-start gap-1 p-3 cursor-pointer rounded-xl hover:bg-muted transition-colors">
-                      <p className="text-sm font-medium">{notif.message}</p>
+                    <DropdownMenuItem key={notif.id} className="flex flex-col items-start gap-1 p-3 cursor-pointer rounded-xl hover:bg-muted transition-colors text-right">
+                      <p className="text-sm font-medium w-full">{notif.message}</p>
                       <span className="text-[10px] text-muted-foreground">
                         {notif.createdAt?.toDate?.()?.toLocaleTimeString('ar-SA')}
                       </span>
@@ -146,21 +146,20 @@ export function Shell({ children }: ShellProps) {
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="relative h-10 w-10 rounded-full p-0 ring-2 ring-primary/10 hover:ring-primary/40 transition-all">
+                <Button variant="ghost" className="relative h-10 w-10 rounded-full p-0 ring-2 ring-primary/10 hover:ring-primary/40 transition-all overflow-hidden">
                   <Avatar className="h-full w-full">
                     <AvatarImage 
                       src={currentProfileImage} 
                       className="object-cover"
-                      data-ai-hint={userRole === 'hospital' ? 'hospital icon' : 'professional face'}
                     />
                     <AvatarFallback className="bg-muted text-primary font-bold">{user?.email?.[0].toUpperCase()}</AvatarFallback>
                   </Avatar>
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-60 rounded-2xl p-2 shadow-2xl" dir="rtl">
-                <DropdownMenuLabel className="px-3 py-3">
+              <DropdownMenuContent align="end" className="w-64 rounded-2xl p-2 shadow-2xl" dir="rtl">
+                <DropdownMenuLabel className="px-3 py-3 text-right">
                   <div className="flex flex-col space-y-1">
-                    <p className="text-sm font-bold leading-none">{profile?.fullName || profile?.hospitalName || user?.email}</p>
+                    <p className="text-sm font-black leading-none">{profile?.fullName || profile?.hospitalName || user?.email}</p>
                     <p className="text-[10px] leading-none text-muted-foreground capitalize mt-1">
                       {userRole === 'hospital' ? 'مستشفى مسجل' : 'مهندس صيانة معتمد'}
                     </p>
@@ -168,13 +167,15 @@ export function Shell({ children }: ShellProps) {
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
-                  <Link href="/profile" className="cursor-pointer flex items-center gap-2 p-3 rounded-xl hover:bg-muted transition-colors">
-                    <User className="h-4 w-4" /> الملف الشخصي
+                  <Link href="/profile" className="cursor-pointer flex items-center gap-2 p-3 rounded-xl hover:bg-muted transition-colors justify-end">
+                    <span>الملف الشخصي</span>
+                    <User className="h-4 w-4" />
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleLogout} className="text-destructive cursor-pointer flex items-center gap-2 p-3 rounded-xl hover:bg-destructive/10 transition-colors">
-                  <LogOut className="h-4 w-4" /> تسجيل الخروج
+                <DropdownMenuItem onClick={handleLogout} className="text-destructive cursor-pointer flex items-center gap-2 p-3 rounded-xl hover:bg-destructive/10 transition-colors justify-end">
+                  <span>تسجيل الخروج</span>
+                  <LogOut className="h-4 w-4" />
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -189,7 +190,7 @@ export function Shell({ children }: ShellProps) {
       </main>
 
       {/* Mobile Navigation */}
-      <nav className="fixed bottom-4 left-4 right-4 z-50 border bg-white/90 backdrop-blur-xl md:hidden rounded-2xl shadow-2xl">
+      <nav className="fixed bottom-4 left-4 right-4 z-50 border bg-white/90 backdrop-blur-xl md:hidden rounded-2xl shadow-2xl border-white/20">
         <div className="flex justify-around items-center h-16">
           {navItems.map((item) => {
             const isActive = pathname === item.href;

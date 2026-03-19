@@ -87,12 +87,12 @@ export default function ProfilePage() {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    // التأكد من حجم الملف (اختياري، يفضل أقل من 1 ميجابايت لـ Firestore)
+    // التأكد من حجم الملف (يفضل أقل من 1 ميجابايت لـ Firestore كـ Base64)
     if (file.size > 1024 * 1024) {
       toast({
         variant: "destructive",
         title: "الملف كبير جداً",
-        description: "يرجى اختيار صورة بحجم أقل من 1 ميجابايت.",
+        description: "يرجى اختيار صورة بحجم أقل من 1 ميجابايت لضمان سرعة التحميل.",
       });
       return;
     }
@@ -137,7 +137,7 @@ export default function ProfilePage() {
             <div className="h-32 bg-gradient-to-br from-primary to-primary/80 w-full" />
             <CardContent className="pt-0 flex flex-col items-center text-center -mt-16">
               <div className="relative group">
-                <Avatar className="h-32 w-32 ring-8 ring-white shadow-2xl">
+                <Avatar className="h-32 w-32 ring-8 ring-white shadow-2xl overflow-hidden">
                   <AvatarImage 
                     src={currentProfileImage} 
                     className="object-cover"
