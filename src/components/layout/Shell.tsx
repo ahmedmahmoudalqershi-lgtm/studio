@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { 
@@ -12,13 +12,23 @@ import {
   Search,
   Bell,
   Wrench,
-  LogOut
+  LogOut,
+  X
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { useUser, useAuth } from '@/firebase';
+import { useUser, useAuth, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { signOut } from 'firebase/auth';
+import { collection, query, orderBy, limit, doc, deleteDoc } from 'firebase/firestore';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface ShellProps {
   children: React.ReactNode;
@@ -30,6 +40,19 @@ export function Shell({ children, role }: ShellProps) {
   const router = useRouter();
   const { user, isUserLoading } = useUser();
   const auth = useAuth();
+  const firestore = useFirestore();
+
+  // جلب الإشعارات الحقيقية
+  const notificationsQuery = useMemoFirebase(() => {
+    if (!firestore || !user) return null;
+    return query(
+      collection(firestore, 'users', user.uid, 'notifications'),
+      orderBy('createdAt', 'desc'),
+      limit(5)
+    );
+  }, [firestore, user]);
+
+  const { data: notifications } = useCollection(notificationsQuery);
 
   useEffect(() => {
     if (!isUserLoading && !user) {
@@ -83,10 +106,33 @@ export function Shell({ children, role }: ShellProps) {
           </div>
           
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" className="relative">
-              <Bell className="h-5 w-5" />
-              <span className="absolute top-2 right-2 h-2 w-2 bg-secondary rounded-full border-2 border-background"></span>
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="relative">
+                  <Bell className="h-5 w-5" />
+                  {notifications && notifications.length > 0 && (
+                    <span className="absolute top-2 right-2 h-2 w-2 bg-red-500 rounded-full border-2 border-background"></span>
+                  )}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-80" dir="rtl">
+                <DropdownMenuLabel>الإشعارات</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {notifications && notifications.length > 0 ? (
+                  notifications.map((notif) => (
+                    <DropdownMenuItem key={notif.id} className="flex flex-col items-start gap-1 p-3">
+                      <p className="text-sm font-medium">{notif.message}</p>
+                      <span className="text-xs text-muted-foreground">
+                        {notif.createdAt?.toDate?.()?.toLocaleTimeString('ar-SA')}
+                      </span>
+                    </DropdownMenuItem>
+                  ))
+                ) : (
+                  <div className="p-4 text-center text-sm text-muted-foreground">لا توجد إشعارات حالياً.</div>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+
             <Avatar className="h-8 w-8 ring-2 ring-primary/10">
               <AvatarImage src={`https://picsum.photos/seed/${user?.uid}/100/100`} />
               <AvatarFallback>{user?.email?.[0].toUpperCase()}</AvatarFallback>
