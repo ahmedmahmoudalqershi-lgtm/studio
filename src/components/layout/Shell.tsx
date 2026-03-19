@@ -1,7 +1,7 @@
 
-"use client";
+'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { 
@@ -12,15 +12,14 @@ import {
   Search,
   Bell,
   Wrench,
-  LogOut,
-  X
+  LogOut
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { useUser, useAuth, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { useUser, useAuth, useFirestore, useCollection, useMemoFirebase, useDoc } from '@/firebase';
 import { signOut } from 'firebase/auth';
-import { collection, query, orderBy, limit, doc, deleteDoc } from 'firebase/firestore';
+import { collection, query, orderBy, limit, doc } from 'firebase/firestore';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -32,17 +31,23 @@ import {
 
 interface ShellProps {
   children: React.ReactNode;
-  role: 'hospital' | 'engineer';
 }
 
-export function Shell({ children, role }: ShellProps) {
+export function Shell({ children }: ShellProps) {
   const pathname = usePathname();
   const router = useRouter();
   const { user, isUserLoading } = useUser();
   const auth = useAuth();
   const firestore = useFirestore();
 
-  // جلب الإشعارات الحقيقية
+  // جلب بيانات المستخدم لمعرفة الدور (Role)
+  const userRef = useMemoFirebase(() => {
+    if (!firestore || !user) return null;
+    return doc(firestore, 'users', user.uid);
+  }, [firestore, user?.uid]);
+
+  const { data: userData, isLoading: isRoleLoading } = useDoc(userRef);
+
   const notificationsQuery = useMemoFirebase(() => {
     if (!firestore || !user) return null;
     return query(
@@ -50,7 +55,7 @@ export function Shell({ children, role }: ShellProps) {
       orderBy('createdAt', 'desc'),
       limit(5)
     );
-  }, [firestore, user]);
+  }, [firestore, user?.uid]);
 
   const { data: notifications } = useCollection(notificationsQuery);
 
@@ -67,7 +72,9 @@ export function Shell({ children, role }: ShellProps) {
     }
   };
 
-  const navItems = role === 'hospital' ? [
+  const userRole = userData?.role || 'hospital';
+
+  const navItems = userRole === 'hospital' ? [
     { name: 'الرئيسية', icon: LayoutDashboard, href: '/dashboard' },
     { name: 'أجهزتي', icon: Stethoscope, href: '/devices' },
     { name: 'طلباتي', icon: ClipboardList, href: '/requests' },
@@ -79,7 +86,7 @@ export function Shell({ children, role }: ShellProps) {
     { name: 'الملف الشخصي', icon: User, href: '/profile' },
   ];
 
-  if (isUserLoading) {
+  if (isUserLoading || isRoleLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-pulse flex flex-col items-center gap-4">
@@ -99,9 +106,7 @@ export function Shell({ children, role }: ShellProps) {
               <div className="bg-primary p-2 rounded-xl text-primary-foreground">
                 <Wrench className="h-6 w-6" />
               </div>
-              <h1 className="text-xl font-bold font-headline hidden sm:block">
-                مساعد صيانة الأجهزة
-              </h1>
+              <h1 className="text-xl font-bold font-headline hidden sm:block">مساعد صيانة الأجهزة</h1>
             </Link>
           </div>
           

@@ -1,8 +1,9 @@
+
 'use client';
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth, useUser } from '@/firebase';
+import { useAuth, useUser, useFirestore } from '@/firebase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
@@ -11,6 +12,7 @@ import { Label } from '@/components/ui/label';
 import { Wrench, Hospital, ShieldCheck, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
+import { doc, setDoc, serverTimestamp, getDoc } from 'firebase/firestore';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -20,84 +22,71 @@ export default function LoginPage() {
   
   const auth = useAuth();
   const { user } = useUser();
+  const firestore = useFirestore();
   const router = useRouter();
   const { toast } = useToast();
 
-  // Watch for successful auth and redirect
   useEffect(() => {
-    if (user) {
-      router.push(`/dashboard?role=${activeRole}`);
+    if (user && !isLoading) {
+      router.push('/dashboard');
     }
-  }, [user, router, activeRole]);
+  }, [user, router, isLoading]);
 
   const validateEmail = (email: string) => {
     return String(email)
       .toLowerCase()
-      .match(
-        /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/
-      );
+      .match(/^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/);
   };
 
   async function handleAuth(type: 'login' | 'signup', role: 'hospital' | 'engineer') {
     if (!email || !password) {
-      toast({
-        variant: "destructive",
-        title: "بيانات ناقصة",
-        description: "يرجى إدخال البريد الإلكتروني وكلمة المرور.",
-      });
+      toast({ variant: "destructive", title: "بيانات ناقصة", description: "يرجى إدخال البريد الإلكتروني وكلمة المرور." });
       return;
     }
 
     if (!validateEmail(email)) {
-      toast({
-        variant: "destructive",
-        title: "بريد إلكتروني غير صالح",
-        description: "يرجى إدخال بريد إلكتروني بصيغة صحيحة.",
-      });
-      return;
-    }
-
-    if (password.length < 6) {
-      toast({
-        variant: "destructive",
-        title: "كلمة مرور ضعيفة",
-        description: "يجب أن تتكون كلمة المرور من 6 أحرف على الأقل.",
-      });
+      toast({ variant: "destructive", title: "بريد إلكتروني غير صالح", description: "يرجى إدخال بريد إلكتروني بصيغة صحيحة." });
       return;
     }
 
     setIsLoading(true);
-    setActiveRole(role);
     
     try {
       if (type === 'signup') {
-        await createUserWithEmailAndPassword(auth, email.trim(), password);
-        toast({
-          title: "تم إنشاء الحساب",
-          description: "مرحباً بك في المنصة!",
+        const userCredential = await createUserWithEmailAndPassword(auth, email.trim(), password);
+        const newUser = userCredential.user;
+
+        // إنشاء وثيقة المستخدم الأساسية
+        await setDoc(doc(firestore, 'users', newUser.uid), {
+          id: newUser.uid,
+          email: newUser.email,
+          role: role,
+          status: 'verified',
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
         });
+
+        // إنشاء ملف التعريف الأولي
+        const profileCol = role === 'hospital' ? 'hospitalProfiles' : 'engineerProfiles';
+        await setDoc(doc(firestore, profileCol, newUser.uid), {
+          userId: newUser.uid,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+          ...(role === 'engineer' ? { fullName: email.split('@')[0], rating: 5, totalJobs: 0, specialization: 'General' } : { hospitalName: email.split('@')[0] })
+        });
+
+        toast({ title: "تم إنشاء الحساب", description: `مرحباً بك كـ ${role === 'hospital' ? 'مستشفى' : 'مهندس'}!` });
       } else {
         await signInWithEmailAndPassword(auth, email.trim(), password);
-        toast({
-          title: "تم تسجيل الدخول",
-          description: "مرحباً بعودتك!",
-        });
+        toast({ title: "تم تسجيل الدخول", description: "مرحباً بعودتك!" });
       }
     } catch (err: any) {
       let message = "حدث خطأ أثناء محاولة الدخول.";
-      if (err.code === 'auth/invalid-credential') {
-        message = "البريد الإلكتروني أو كلمة المرور غير صحيحة.";
-      } else if (err.code === 'auth/email-already-in-use') {
-        message = "هذا البريد الإلكتروني مسجل مسبقاً.";
-      } else if (err.code === 'auth/too-many-requests') {
-        message = "تم حظر الدخول مؤقتاً بسبب محاولات كثيرة خاطئة. حاول لاحقاً.";
-      }
+      if (err.code === 'auth/invalid-credential') message = "البريد الإلكتروني أو كلمة المرور غير صحيحة.";
+      else if (err.code === 'auth/email-already-in-use') message = "هذا البريد الإلكتروني مسجل مسبقاً.";
       
-      toast({
-        variant: "destructive",
-        title: "فشل الدخول",
-        description: message,
-      });
+      toast({ variant: "destructive", title: "فشل العملية", description: message });
+    } finally {
       setIsLoading(false);
     }
   }
@@ -123,46 +112,24 @@ export default function LoginPage() {
               </TabsTrigger>
             </TabsList>
             
-            {['hospital', 'engineer'].map((role) => (
-              <TabsContent key={role} value={role}>
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor={`${role}-email`}>البريد الإلكتروني</Label>
-                    <Input 
-                      id={`${role}-email`}
-                      type="email" 
-                      placeholder="name@example.com" 
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor={`${role}-password`}>كلمة المرور</Label>
-                    <Input 
-                      id={`${role}-password`}
-                      type="password" 
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-4 pt-4">
-                    <Button 
-                      onClick={() => handleAuth('login', role as any)} 
-                      disabled={isLoading}
-                    >
-                      {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'دخول'}
-                    </Button>
-                    <Button 
-                      variant="outline" 
-                      onClick={() => handleAuth('signup', role as any)}
-                      disabled={isLoading}
-                    >
-                      تسجيل جديد
-                    </Button>
-                  </div>
-                </div>
-              </TabsContent>
-            ))}
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="email">البريد الإلكتروني</Label>
+                <Input id="email" type="email" placeholder="name@example.com" value={email} onChange={(e) => setEmail(e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="password">كلمة المرور</Label>
+                <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
+              </div>
+              <div className="grid grid-cols-2 gap-4 pt-4">
+                <Button onClick={() => handleAuth('login', activeRole)} disabled={isLoading}>
+                  {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'دخول'}
+                </Button>
+                <Button variant="outline" onClick={() => handleAuth('signup', activeRole)} disabled={isLoading}>
+                  تسجيل جديد
+                </Button>
+              </div>
+            </div>
           </Tabs>
         </CardContent>
         <CardFooter className="text-center text-xs text-muted-foreground justify-center">
