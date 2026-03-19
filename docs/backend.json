@@ -1,3 +1,4 @@
+
 {
   "entities": {
     "User": {
@@ -79,6 +80,11 @@
           "type": "string",
           "description": "The primary contact phone number for the hospital."
         },
+        "profileImageUrl": {
+          "type": "string",
+          "description": "URL to the hospital's profile picture.",
+          "format": "uri"
+        },
         "commercialRegistrationFileUrl": {
           "type": "string",
           "description": "URL to the commercial registration file of the hospital.",
@@ -140,6 +146,11 @@
         "yearsExperience": {
           "type": "number",
           "description": "The number of years of experience the engineer has."
+        },
+        "profileImageUrl": {
+          "type": "string",
+          "description": "URL to the engineer's profile picture.",
+          "format": "uri"
         },
         "certificationFileUrl": {
           "type": "string",

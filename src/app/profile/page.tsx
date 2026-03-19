@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect } from 'react';
@@ -18,17 +19,29 @@ import {
   MapPin,
   Phone,
   Briefcase,
-  Hospital
+  Hospital,
+  Link as LinkIcon
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { doc, serverTimestamp } from 'firebase/firestore';
 import { updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 export default function ProfilePage() {
   const { user } = useUser();
   const firestore = useFirestore();
   const { toast } = useToast();
   const [isSaving, setIsSaving] = useState(false);
+  const [isChangingImage, setIsChangingImage] = useState(false);
+  const [newImageUrl, setNewImageUrl] = useState("");
 
   const userRef = useMemoFirebase(() => {
     if (!firestore || !user) return null;
@@ -50,6 +63,7 @@ export default function ProfilePage() {
   useEffect(() => {
     if (profile) {
       setFormData(profile);
+      setNewImageUrl(profile.profileImageUrl || "");
     }
   }, [profile]);
 
@@ -78,21 +92,33 @@ export default function ProfilePage() {
     }
   };
 
+  const handleUpdateImage = () => {
+    if (!profileRef || !firestore) return;
+    updateDocumentNonBlocking(profileRef, {
+      profileImageUrl: newImageUrl,
+      updatedAt: serverTimestamp()
+    });
+    setIsChangingImage(false);
+    toast({ title: "تم تحديث الصورة", description: "تم تحديث صورتك الشخصية بنجاح." });
+  };
+
   if (isLoading) return (
     <Shell>
       <div className="flex flex-col items-center justify-center h-64 gap-4">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <p>جاري تحميل ملفك الشخصي الحقيقي...</p>
+        <p>جاري تحميل ملفك الشخصي...</p>
       </div>
     </Shell>
   );
+
+  const currentProfileImage = profile?.profileImageUrl || `https://picsum.photos/seed/${user?.uid}/300/300`;
 
   return (
     <Shell>
       <div className="max-w-4xl mx-auto space-y-8" dir="rtl">
         <div className="text-right">
           <h1 className="text-3xl font-black font-headline text-primary">الملف الشخصي</h1>
-          <p className="text-muted-foreground">إدارة المعلومات المهنية وصورة الحساب.</p>
+          <p className="text-muted-foreground">إدارة المعلومات المهنية وصورة الحساب الحقيقية.</p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -102,16 +128,51 @@ export default function ProfilePage() {
               <div className="relative group">
                 <Avatar className="h-32 w-32 ring-8 ring-white shadow-2xl">
                   <AvatarImage 
-                    src={`https://picsum.photos/seed/${user?.uid}/300/300`} 
-                    data-ai-hint={role === 'hospital' ? 'hospital building' : 'professional man'}
+                    src={currentProfileImage} 
+                    className="object-cover"
+                    data-ai-hint={role === 'hospital' ? 'hospital building' : 'professional portrait'}
                   />
                   <AvatarFallback className="text-4xl font-bold bg-muted text-primary">
                     {user?.email?.[0].toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
-                <div className="absolute inset-0 bg-black/40 rounded-full opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center cursor-pointer">
-                  <Camera className="text-white h-8 w-8" />
-                </div>
+                
+                <Dialog open={isChangingImage} onOpenChange={setIsChangingImage}>
+                  <DialogTrigger asChild>
+                    <div className="absolute inset-0 bg-black/40 rounded-full opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center cursor-pointer">
+                      <Camera className="text-white h-8 w-8" />
+                    </div>
+                  </DialogTrigger>
+                  <DialogContent dir="rtl">
+                    <DialogHeader>
+                      <DialogTitle>تغيير الصورة الشخصية</DialogTitle>
+                      <DialogDescription>أدخل رابط الصورة الجديدة أو اختر صورة حقيقية من ملفاتك.</DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                      <div className="space-y-2">
+                        <Label>رابط الصورة</Label>
+                        <div className="relative">
+                          <LinkIcon className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                          <Input 
+                            placeholder="https://example.com/image.jpg" 
+                            className="pr-10" 
+                            value={newImageUrl} 
+                            onChange={(e) => setNewImageUrl(e.target.value)} 
+                          />
+                        </div>
+                        <p className="text-xs text-muted-foreground">يمكنك استخدام رابط صورة من جهازك أو من الإنترنت.</p>
+                      </div>
+                      {newImageUrl && (
+                        <div className="flex justify-center">
+                          <img src={newImageUrl} alt="Preview" className="h-24 w-24 rounded-full object-cover border" />
+                        </div>
+                      )}
+                    </div>
+                    <DialogFooter>
+                      <Button onClick={handleUpdateImage} className="w-full">تحديث الصورة الآن</Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
               </div>
               
               <h2 className="mt-4 text-xl font-black text-foreground">

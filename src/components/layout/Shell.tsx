@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useEffect } from 'react';
@@ -46,6 +47,16 @@ export function Shell({ children }: ShellProps) {
 
   const { data: userData, isLoading: isRoleLoading } = useDoc(userRef);
 
+  const userRole = userData?.role || 'hospital';
+  
+  const profileRef = useMemoFirebase(() => {
+    if (!firestore || !user) return null;
+    const collectionName = userRole === 'hospital' ? 'hospitalProfiles' : 'engineerProfiles';
+    return doc(firestore, collectionName, user.uid);
+  }, [firestore, user?.uid, userRole]);
+
+  const { data: profile } = useDoc(profileRef);
+
   const notificationsQuery = useMemoFirebase(() => {
     if (!firestore || !user) return null;
     return query(
@@ -70,8 +81,6 @@ export function Shell({ children }: ShellProps) {
     }
   };
 
-  const userRole = userData?.role || 'hospital';
-
   const navItems = userRole === 'hospital' ? [
     { name: 'الرئيسية', icon: LayoutDashboard, href: '/dashboard' },
     { name: 'أجهزتي', icon: Stethoscope, href: '/devices' },
@@ -91,6 +100,8 @@ export function Shell({ children }: ShellProps) {
       </div>
     );
   }
+
+  const currentProfileImage = profile?.profileImageUrl || `https://picsum.photos/seed/${user?.uid}/100/100`;
 
   return (
     <div className="flex flex-col min-h-screen bg-slate-50">
@@ -138,7 +149,8 @@ export function Shell({ children }: ShellProps) {
                 <Button variant="ghost" className="relative h-10 w-10 rounded-full p-0 ring-2 ring-primary/10 hover:ring-primary/40 transition-all">
                   <Avatar className="h-full w-full">
                     <AvatarImage 
-                      src={`https://picsum.photos/seed/${user?.uid}/100/100`} 
+                      src={currentProfileImage} 
+                      className="object-cover"
                       data-ai-hint={userRole === 'hospital' ? 'hospital icon' : 'professional face'}
                     />
                     <AvatarFallback className="bg-muted text-primary font-bold">{user?.email?.[0].toUpperCase()}</AvatarFallback>
@@ -148,7 +160,7 @@ export function Shell({ children }: ShellProps) {
               <DropdownMenuContent align="end" className="w-60 rounded-2xl p-2 shadow-2xl" dir="rtl">
                 <DropdownMenuLabel className="px-3 py-3">
                   <div className="flex flex-col space-y-1">
-                    <p className="text-sm font-bold leading-none">{userData?.email}</p>
+                    <p className="text-sm font-bold leading-none">{profile?.fullName || profile?.hospitalName || user?.email}</p>
                     <p className="text-[10px] leading-none text-muted-foreground capitalize mt-1">
                       {userRole === 'hospital' ? 'مستشفى مسجل' : 'مهندس صيانة معتمد'}
                     </p>
