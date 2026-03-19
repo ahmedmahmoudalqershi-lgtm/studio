@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState } from 'react';
@@ -62,10 +63,17 @@ export default function RequestDetailsPage() {
   const [reviewRating, setReviewRating] = useState(5);
   const [reviewComment, setReviewComment] = useState('');
 
+  const userRef = useMemoFirebase(() => {
+    if (!firestore || !user) return null;
+    return doc(firestore, 'users', user.uid);
+  }, [firestore, user?.uid]);
+  const { data: userData } = useDoc(userRef);
+  const isAdmin = userData?.role === 'admin';
+
   const requestRef = useMemoFirebase(() => {
     if (!firestore || !requestId || !user) return null;
     return doc(firestore, 'maintenanceRequests', requestId as string);
-  }, [firestore, requestId, user]);
+  }, [firestore, requestId, user?.uid]);
   
   const { data: request, isLoading: requestLoading } = useDoc(requestRef);
 
@@ -75,12 +83,19 @@ export default function RequestDetailsPage() {
     if (!firestore || !requestId || !user || !request) return null;
     const bidsCol = collection(firestore, 'maintenanceRequests', requestId as string, 'bids');
     
+    // Admin can see all bids
+    if (isAdmin) {
+      return bidsCol;
+    }
+    
+    // Hospital can see bids for their request
     if (user.uid === request.hospitalId) {
       return query(bidsCol, where('hospitalId', '==', user.uid));
-    } else {
-      return query(bidsCol, where('engineerId', '==', user.uid));
-    }
-  }, [firestore, requestId, user?.uid, request?.hospitalId]);
+    } 
+    
+    // Engineer can only see their own bid for this request
+    return query(bidsCol, where('engineerId', '==', user.uid));
+  }, [firestore, requestId, user?.uid, request?.hospitalId, isAdmin, request]);
   
   const { data: bids, isLoading: bidsLoading } = useCollection(bidsQuery);
 
@@ -117,19 +132,21 @@ export default function RequestDetailsPage() {
       updatedAt: serverTimestamp(),
     });
 
-    addDocumentNonBlocking(collection(firestore, 'reviews'), {
-      requestId: request.id,
-      hospitalId: user?.uid,
-      engineerId: request.assignedEngineerId,
-      rating: reviewRating,
-      comment: reviewComment,
-      createdAt: serverTimestamp(),
-    });
+    if (request.assignedEngineerId) {
+      addDocumentNonBlocking(collection(firestore, 'reviews'), {
+        requestId: request.id,
+        hospitalId: user?.uid,
+        engineerId: request.assignedEngineerId,
+        rating: reviewRating,
+        comment: reviewComment,
+        createdAt: serverTimestamp(),
+      });
 
-    updateDocumentNonBlocking(doc(firestore, 'engineerProfiles', request.assignedEngineerId), {
-      totalJobs: increment(1),
-      updatedAt: serverTimestamp(),
-    });
+      updateDocumentNonBlocking(doc(firestore, 'engineerProfiles', request.assignedEngineerId), {
+        totalJobs: increment(1),
+        updatedAt: serverTimestamp(),
+      });
+    }
 
     toast({ title: "تم إكمال المهمة", description: "شكراً لتقييمك، تم إغلاق الطلب بنجاح." });
     router.push('/dashboard');
@@ -326,7 +343,7 @@ export default function RequestDetailsPage() {
                     تحليل ومقارنة العروض (AI)
                   </Button>
                 )}
-                <h2 className="text-2xl font-black">{isOwner ? `العروض المتاحة (${bids?.length || 0})` : 'عروضك السابقة لهذا الطلب'}</h2>
+                <h2 className="text-2xl font-black">{isOwner || isAdmin ? `العروض المتاحة (${bids?.length || 0})` : 'عروضك السابقة لهذا الطلب'}</h2>
               </div>
 
               {isOwner && aiAnalysis && (
@@ -398,7 +415,7 @@ export default function RequestDetailsPage() {
           </div>
 
           <div className="space-y-6">
-            {!isOwner && request.status === 'open' && (
+            {!isOwner && !isAdmin && request.status === 'open' && (
               <Card className="shadow-2xl border-t-8 border-t-primary rounded-[2.5rem] overflow-hidden sticky top-24">
                 <CardHeader className="text-right pb-0">
                   <CardTitle className="text-2xl font-black">تقديم عرض تقني</CardTitle>

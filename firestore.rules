@@ -6,7 +6,7 @@ service cloud.firestore {
     /**
      * CORE PHILOSOPHY
      * This ruleset implements a robust, role-based security model.
-     * UPDATED: Added hospitalId to bids for authorization independence.
+     * UPDATED: Enhanced isAdmin check and list permissions.
      */
 
     // --- Helper Functions ---
@@ -20,7 +20,10 @@ service cloud.firestore {
     }
 
     function isAdmin() {
-      return isSignedIn() && exists(/databases/$(database)/documents/roles_admin/$(request.auth.uid));
+      return isSignedIn() && (
+        exists(/databases/$(database)/documents/roles_admin/$(request.auth.uid)) ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin')
+      );
     }
 
     function isDataOwner(ownerId) {
@@ -73,9 +76,7 @@ service cloud.firestore {
       allow delete: if isExistingOwner(resource.data.hospitalId) || isAdmin();
 
       match /bids/{bidId} {
-        // Engineer can create a bid
         allow create: if isSignedIn() && isDataOwner(request.resource.data.engineerId);
-        // Both the engineer and the hospital owning the request can list/get bids
         allow get, list: if isSignedIn() && (isDataOwner(resource.data.engineerId) || isDataOwner(resource.data.hospitalId) || isAdmin());
         allow update: if isExistingOwner(resource.data.engineerId) || isDataOwner(resource.data.hospitalId) || isAdmin();
         allow delete: if isExistingOwner(resource.data.engineerId) || isAdmin();
