@@ -22,7 +22,9 @@ import {
   CheckCircle2,
   Star,
   ShieldAlert,
-  Info
+  Info,
+  DollarSign,
+  Timer
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -222,15 +224,20 @@ export default function RequestDetailsPage() {
             </Button>
             <div>
               <h1 className="text-3xl font-bold font-headline">{request.title}</h1>
-              <Badge className="mt-1" variant={request.status === 'open' ? 'secondary' : 'default'}>
-                {request.status === 'open' ? 'مفتوح للمزايدة' : request.status === 'assigned' ? 'قيد العمل' : 'مكتمل'}
-              </Badge>
+              <div className="flex items-center gap-2 mt-1">
+                <Badge variant={request.status === 'open' ? 'secondary' : 'default'} className="rounded-lg">
+                  {request.status === 'open' ? 'مفتوح للمزايدة' : request.status === 'assigned' ? 'قيد العمل' : 'مكتمل'}
+                </Badge>
+                <Badge variant="outline" className="border-primary/20 text-primary">
+                  {request.urgency === 'critical' ? 'حرج فوري' : request.urgency === 'high' ? 'عاجل' : 'عادي'}
+                </Badge>
+              </div>
             </div>
           </div>
           
           <div className="flex gap-2">
             {isOwner && request.status === 'open' && (
-              <Button variant="outline" onClick={handleTroubleshoot} disabled={isTroubleshooting} className="gap-2 border-primary/50 text-primary">
+              <Button variant="outline" onClick={handleTroubleshoot} disabled={isTroubleshooting} className="gap-2 border-primary/50 text-primary rounded-xl">
                 {isTroubleshooting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
                 استكشاف الأعطال ذكياً
               </Button>
@@ -238,24 +245,25 @@ export default function RequestDetailsPage() {
             {isOwner && request.status === 'assigned' && (
               <Dialog>
                 <DialogTrigger asChild>
-                  <Button className="bg-green-600 hover:bg-green-700 gap-2">
-                    <CheckCircle2 className="h-4 w-4" /> إتمام وتقييم
+                  <Button className="bg-green-600 hover:bg-green-700 gap-2 rounded-xl">
+                    <CheckCircle2 className="h-4 w-4" /> إتمام وتقييم المهمة
                   </Button>
                 </DialogTrigger>
-                <DialogContent dir="rtl">
-                  <DialogHeader><DialogTitle>تقييم جودة الصيانة</DialogTitle></DialogHeader>
+                <DialogContent dir="rtl" className="rounded-3xl">
+                  <DialogHeader><DialogTitle className="text-xl">تقييم جودة الصيانة</DialogTitle></DialogHeader>
                   <div className="space-y-6 py-4">
+                    <p className="text-center text-muted-foreground text-sm">كيف تقيم أداء المهندس في هذه العملية؟</p>
                     <div className="flex justify-center gap-2">
                       {[1, 2, 3, 4, 5].map(s => (
-                        <Star key={s} className={`h-10 w-10 cursor-pointer ${reviewRating >= s ? "text-yellow-500 fill-yellow-500" : "text-muted"}`} onClick={() => setReviewRating(s)} />
+                        <Star key={s} className={`h-10 w-10 cursor-pointer transition-all ${reviewRating >= s ? "text-yellow-500 fill-yellow-500 scale-110" : "text-muted hover:text-yellow-200"}`} onClick={() => setReviewRating(s)} />
                       ))}
                     </div>
                     <div className="space-y-2 text-right">
-                      <Label>ملاحظات إضافية</Label>
-                      <Textarea placeholder="اكتب رأيك في عمل المهندس..." value={reviewComment} onChange={(e) => setReviewComment(e.target.value)} />
+                      <Label className="font-bold">ملاحظات إضافية</Label>
+                      <Textarea placeholder="اكتب رأيك في عمل المهندس ومدى جودة الإصلاح..." value={reviewComment} onChange={(e) => setReviewComment(e.target.value)} className="rounded-xl min-h-[100px]" />
                     </div>
                   </div>
-                  <DialogFooter><Button onClick={handleCompleteJob} className="w-full">حفظ وإغلاق الطلب</Button></DialogFooter>
+                  <DialogFooter><Button onClick={handleCompleteJob} className="w-full h-12 rounded-xl">حفظ وإغلاق الطلب نهائياً</Button></DialogFooter>
                 </DialogContent>
               </Dialog>
             )}
@@ -263,22 +271,33 @@ export default function RequestDetailsPage() {
         </div>
 
         {troubleshootResult && (
-          <Card className="bg-blue-50 border-blue-200 animate-in fade-in slide-in-from-top-2">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-lg flex items-center gap-2 text-blue-700">
-                <Info className="h-5 w-5" /> نصائح المساعد الذكي
+          <Card className="bg-blue-50 border-blue-200 animate-in fade-in slide-in-from-top-2 rounded-3xl overflow-hidden shadow-lg border-2">
+            <CardHeader className="bg-blue-100/50 pb-2">
+              <CardTitle className="text-lg flex items-center gap-2 text-blue-800">
+                <Sparkles className="h-5 w-5" /> مساعد التشخيص الذكي
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="bg-white p-4 rounded-lg border border-blue-100">
-                <p className="font-bold text-blue-800">السبب المحتمل: {troubleshootResult.potentialCause}</p>
-                <ul className="mt-2 space-y-1 text-sm list-disc pr-4 text-right">
-                  {troubleshootResult.steps.map((s, i) => <li key={i}>{s}</li>)}
-                </ul>
+            <CardContent className="p-6 space-y-4">
+              <div className="bg-white p-5 rounded-2xl border border-blue-100 shadow-sm">
+                <p className="font-bold text-blue-900 mb-2">السبب المحتمل: {troubleshootResult.potentialCause}</p>
+                <div className="space-y-3">
+                  <p className="text-sm font-medium text-blue-800">خطوات مقترحة:</p>
+                  <ul className="space-y-2 text-sm list-none pr-0 text-right">
+                    {troubleshootResult.steps.map((s, i) => (
+                      <li key={i} className="flex items-start gap-2 bg-blue-50/50 p-2 rounded-lg">
+                        <span className="bg-blue-200 text-blue-800 w-5 h-5 rounded-full flex items-center justify-center text-[10px] shrink-0">{i+1}</span>
+                        <span>{s}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               </div>
-              <div className="flex items-start gap-2 p-3 bg-amber-50 rounded-lg border border-amber-200 text-amber-800 text-sm">
-                <ShieldAlert className="h-5 w-5 shrink-0" />
-                <p>{troubleshootResult.safetyWarning}</p>
+              <div className="flex items-start gap-3 p-4 bg-amber-50 rounded-2xl border border-amber-200 text-amber-900 text-sm">
+                <ShieldAlert className="h-5 w-5 shrink-0 text-amber-600" />
+                <div>
+                  <p className="font-bold mb-1">تنبيه أمان:</p>
+                  <p>{troubleshootResult.safetyWarning}</p>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -286,13 +305,15 @@ export default function RequestDetailsPage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 space-y-6">
-            <Card className="border-none shadow-md">
+            <Card className="border-none shadow-xl rounded-3xl overflow-hidden">
+              <CardHeader className="bg-muted/30 border-b">
+                <CardTitle className="text-xl font-bold">تفاصيل العطل الفنية</CardTitle>
+              </CardHeader>
               <CardContent className="p-8">
-                <h3 className="text-xl font-bold mb-4 text-right">وصف الطلب</h3>
-                <p className="text-muted-foreground whitespace-pre-wrap leading-relaxed text-right">{request.description}</p>
-                <div className="flex gap-4 mt-6 pt-6 border-t text-sm text-muted-foreground justify-end">
-                  <span className="flex items-center gap-1"><Calendar className="h-4 w-4" /> تاريخ الطلب: {request.createdAt?.toDate?.()?.toLocaleDateString('ar-SA') || 'اليوم'}</span>
-                  <span className="flex items-center gap-1"><Clock className="h-4 w-4" /> الأهمية: {request.urgency}</span>
+                <p className="text-muted-foreground whitespace-pre-wrap leading-relaxed text-right text-lg">{request.description}</p>
+                <div className="flex flex-wrap gap-6 mt-8 pt-6 border-t text-sm text-muted-foreground justify-end">
+                  <span className="flex items-center gap-2 bg-muted px-3 py-1 rounded-full"><Calendar className="h-4 w-4" /> تم النشر: {request.createdAt?.toDate?.()?.toLocaleDateString('ar-SA') || 'اليوم'}</span>
+                  <span className="flex items-center gap-2 bg-muted px-3 py-1 rounded-full"><Clock className="h-4 w-4" /> الأولوية: {request.urgency}</span>
                 </div>
               </CardContent>
             </Card>
@@ -300,22 +321,26 @@ export default function RequestDetailsPage() {
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 {isOwner && bids && bids.length > 0 && (
-                  <Button onClick={handleAnalyzeBids} disabled={isAnalyzing} variant="outline" className="gap-2 bg-secondary/10">
+                  <Button onClick={handleAnalyzeBids} disabled={isAnalyzing} variant="outline" className="gap-2 bg-primary/5 border-primary/20 text-primary rounded-xl">
                     {isAnalyzing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-                    تحليل العروض بالذكاء الاصطناعي
+                    تحليل ومقارنة العروض (AI)
                   </Button>
                 )}
-                <h2 className="text-xl font-bold">{isOwner ? `العروض المستلمة (${bids?.length || 0})` : 'عروضك لهذا الطلب'}</h2>
+                <h2 className="text-2xl font-black">{isOwner ? `العروض المتاحة (${bids?.length || 0})` : 'عروضك السابقة لهذا الطلب'}</h2>
               </div>
 
               {isOwner && aiAnalysis && (
-                <Card className="bg-primary/5 border-primary/20 space-y-3 p-6 rounded-2xl">
-                  <p className="font-bold text-primary flex items-center gap-2 justify-end"><Sparkles className="h-4 w-4" /> توصية الذكاء الاصطناعي:</p>
-                  <div className="bg-white p-4 rounded-xl shadow-sm text-right">
-                    <p className="font-black text-lg">{aiAnalysis.bestOption.engineerName}</p>
-                    <p className="text-sm text-muted-foreground mt-1">{aiAnalysis.bestOption.reason}</p>
-                    <div className="mt-4 p-3 bg-amber-50 rounded-lg text-xs text-amber-800 border border-amber-100">
-                      <strong>تحليل المخاطر:</strong> {aiAnalysis.riskAnalysis}
+                <Card className="bg-primary/5 border-primary/20 space-y-3 p-6 rounded-3xl shadow-lg animate-in zoom-in-95">
+                  <p className="font-bold text-primary flex items-center gap-2 justify-end"><Sparkles className="h-4 w-4" /> التوصية الذكية للمستشفى:</p>
+                  <div className="bg-white p-6 rounded-2xl shadow-sm text-right border-2 border-primary/10">
+                    <p className="font-black text-xl text-primary">{aiAnalysis.bestOption.engineerName}</p>
+                    <p className="text-sm text-muted-foreground mt-2 leading-relaxed">{aiAnalysis.bestOption.reason}</p>
+                    <div className="mt-6 p-4 bg-amber-50 rounded-xl text-sm text-amber-900 border border-amber-100 flex items-start gap-3">
+                      <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0" />
+                      <div>
+                        <strong>تحليل المخاطر والاعتبارات:</strong>
+                        <p className="mt-1 opacity-80">{aiAnalysis.riskAnalysis}</p>
+                      </div>
                     </div>
                   </div>
                 </Card>
@@ -323,30 +348,49 @@ export default function RequestDetailsPage() {
 
               <div className="space-y-4">
                 {bids?.map(bid => (
-                  <Card key={bid.id} className="hover:shadow-lg transition-shadow overflow-hidden border-none shadow-sm">
-                    <CardContent className="p-6">
-                      <div className="flex justify-between items-start gap-4">
-                        <div className="flex-1 text-right">
-                          <div className="flex items-center gap-2 mb-2 justify-end">
-                            <span className="font-bold">{bid.engineerId === user?.uid ? 'عرضك الحالي' : 'مهندس صيانة معتمد'}</span>
-                            <User className="h-4 w-4 text-primary" />
+                  <Card key={bid.id} className="hover:shadow-2xl transition-all duration-300 overflow-hidden border-none shadow-md rounded-3xl group">
+                    <CardContent className="p-0">
+                      <div className="flex flex-col sm:flex-row">
+                        <div className="p-6 flex-1 text-right">
+                          <div className="flex items-center gap-3 mb-4 justify-end">
+                            <div className="text-right">
+                              <p className="font-bold text-lg">{bid.engineerId === user?.uid ? 'عرضك الحالي' : 'مهندس صيانة متخصص'}</p>
+                              <div className="flex items-center gap-1 justify-end text-xs text-yellow-500">
+                                <Star className="h-3 w-3 fill-current" />
+                                <Star className="h-3 w-3 fill-current" />
+                                <Star className="h-3 w-3 fill-current" />
+                                <Star className="h-3 w-3 fill-current" />
+                                <Star className="h-3 w-3 fill-current" />
+                              </div>
+                            </div>
+                            <div className="bg-primary/10 p-3 rounded-2xl">
+                              <User className="h-6 w-6 text-primary" />
+                            </div>
                           </div>
-                          <p className="text-sm text-muted-foreground leading-relaxed">{bid.description}</p>
-                          <p className="mt-4 text-primary font-black text-2xl">{bid.price} ر.س</p>
+                          <p className="text-muted-foreground leading-relaxed text-sm bg-muted/30 p-4 rounded-2xl border border-muted-foreground/5">{bid.description}</p>
+                          <div className="mt-4 flex items-center gap-6 justify-end">
+                             <span className="flex items-center gap-2 text-primary font-black text-2xl">{bid.price} ر.س <DollarSign className="h-5 w-5" /></span>
+                             <span className="flex items-center gap-2 text-muted-foreground text-sm font-medium">{bid.estimatedDays} أيام عمل <Timer className="h-4 w-4" /></span>
+                          </div>
                         </div>
-                        <div className="text-left space-y-3">
-                          <Badge variant="outline" className="px-3 py-1">{bid.estimatedDays} أيام عمل</Badge>
-                          {isOwner && request.status === 'open' && (
-                            <Button size="lg" className="w-full rounded-xl shadow-md" onClick={() => handleAcceptBid(bid)}>قبول العرض</Button>
-                          )}
-                        </div>
+                        {isOwner && request.status === 'open' && (
+                          <div className="bg-muted/20 p-6 flex items-center justify-center border-r sm:w-48">
+                            <Button size="lg" className="w-full rounded-2xl shadow-xl shadow-primary/20 py-8" onClick={() => handleAcceptBid(bid)}>قبول العرض</Button>
+                          </div>
+                        )}
+                        {bid.status === 'accepted' && (
+                          <div className="bg-green-500/10 p-6 flex items-center justify-center border-r sm:w-48">
+                             <Badge className="bg-green-500 text-white p-3 rounded-xl gap-2"><CheckCircle2 className="h-4 w-4" /> العرض المقبول</Badge>
+                          </div>
+                        )}
                       </div>
                     </CardContent>
                   </Card>
                 ))}
                 {(!bids || bids.length === 0) && (
-                  <div className="text-center py-12 bg-muted/20 rounded-3xl border-2 border-dashed">
-                    <p className="text-muted-foreground">{isOwner ? 'في انتظار عروض المهندسين...' : 'لم تقدم عرضاً لهذا الطلب بعد.'}</p>
+                  <div className="text-center py-20 bg-muted/10 rounded-[3rem] border-2 border-dashed border-muted-foreground/20">
+                    <Wrench className="h-16 w-16 text-muted-foreground/20 mx-auto mb-4" />
+                    <p className="text-muted-foreground font-medium">{isOwner ? 'لم تصل أي عروض حتى الآن، سيتم إشعارك فور وصولها.' : 'لم تقدم عرضاً لهذا الطلب بعد، ابدأ الآن بمساعدة الذكاء الاصطناعي.'}</p>
                   </div>
                 )}
               </div>
@@ -355,58 +399,76 @@ export default function RequestDetailsPage() {
 
           <div className="space-y-6">
             {!isOwner && request.status === 'open' && (
-              <Card className="shadow-lg border-t-4 border-t-primary rounded-3xl overflow-hidden">
-                <CardHeader className="text-right"><CardTitle>تقديم عرض صيانة</CardTitle></CardHeader>
-                <CardContent className="space-y-4 text-right">
-                  <div className="space-y-2">
-                    <Label>السعر المقترح (ريال)</Label>
-                    <Input type="number" placeholder="0.00" value={bidPrice} onChange={(e) => setBidPrice(e.target.value)} className="h-12 rounded-xl" />
+              <Card className="shadow-2xl border-t-8 border-t-primary rounded-[2.5rem] overflow-hidden sticky top-24">
+                <CardHeader className="text-right pb-0">
+                  <CardTitle className="text-2xl font-black">تقديم عرض تقني</CardTitle>
+                  <CardDescription>قدم عرضاً احترافياً مقنعاً لزيادة فرص قبولك.</CardDescription>
+                </CardHeader>
+                <CardContent className="p-8 space-y-6 text-right">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label className="font-bold flex items-center gap-2 justify-end">السعر <DollarSign className="h-3 w-3" /></Label>
+                      <Input type="number" placeholder="0.00" value={bidPrice} onChange={(e) => setBidPrice(e.target.value)} className="h-14 rounded-2xl text-lg text-center font-bold" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="font-bold flex items-center gap-2 justify-end">المدة <Timer className="h-3 w-3" /></Label>
+                      <Input type="number" placeholder="أيام" value={bidDays} onChange={(e) => setBidDays(e.target.value)} className="h-14 rounded-2xl text-lg text-center font-bold" />
+                    </div>
                   </div>
+                  
                   <div className="space-y-2">
-                    <Label>المدة المتوقعة (أيام)</Label>
-                    <Input type="number" placeholder="مثال: 3" value={bidDays} onChange={(e) => setBidDays(e.target.value)} className="h-12 rounded-xl" />
-                  </div>
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between mb-2">
                       <Button 
                         type="button" 
                         variant="outline" 
                         size="sm" 
                         onClick={handleGenerateAIBid}
                         disabled={isGeneratingBidAI}
-                        className="text-secondary-foreground bg-secondary/10 hover:bg-secondary/20 border-secondary/50 flex items-center gap-1 h-8"
+                        className="text-primary bg-primary/5 hover:bg-primary/10 border-primary/30 flex items-center gap-2 h-9 rounded-xl"
                       >
-                        {isGeneratingBidAI ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
-                        صياغة ذكية للعرض
+                        {isGeneratingBidAI ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                        صياغة تقنية ذكية
                       </Button>
-                      <Label>تفاصيل العرض التقنية</Label>
+                      <Label className="font-bold">خطة العمل والوصف</Label>
                     </div>
                     <Textarea 
-                      placeholder="اشرح خطتك التقنية للإصلاح..." 
+                      placeholder="صف خطواتك التقنية، قطع الغيار، وضمان الجودة..." 
                       value={bidDesc} 
                       onChange={(e) => setBidDesc(e.target.value)} 
-                      className="min-h-[120px] rounded-xl" 
+                      className="min-h-[180px] rounded-2xl p-4 leading-relaxed text-sm bg-muted/20" 
                     />
-                    <p className="text-[10px] text-muted-foreground">يمكنك كتابة ملاحظات بسيطة ثم الضغط على الصياغة الذكية لتحويلها لعرض احترافي.</p>
+                    <p className="text-[10px] text-muted-foreground mt-2 leading-tight">نصيحة: اكتب رؤوس أقلام ثم استخدم الصياغة الذكية لتحويلها لعرض احترافي متكامل.</p>
                   </div>
-                  <Button className="w-full h-14 text-lg rounded-2xl shadow-xl shadow-primary/20 mt-4" onClick={handleSendBid} disabled={isSubmittingBid || !bidPrice || !bidDays}>
-                    {isSubmittingBid ? <Loader2 className="h-4 w-4 animate-spin" /> : 'إرسال عرضي الآن'}
+
+                  <Button className="w-full h-16 text-xl font-black rounded-[1.5rem] shadow-2xl shadow-primary/30 mt-4 transition-all hover:scale-[1.02] active:scale-[0.98]" onClick={handleSendBid} disabled={isSubmittingBid || !bidPrice || !bidDays}>
+                    {isSubmittingBid ? <Loader2 className="h-6 w-6 animate-spin" /> : 'إرسال عرضي الآن'}
                   </Button>
                 </CardContent>
               </Card>
             )}
 
             {request.status !== 'open' && (
-              <Card className="bg-primary/5 border-primary/20 rounded-3xl">
-                <CardContent className="p-6 text-center space-y-4">
-                  <div className="bg-white w-16 h-16 rounded-full flex items-center justify-center mx-auto shadow-sm">
-                    <ShieldAlert className="h-8 w-8 text-primary" />
+              <Card className="bg-primary/5 border-primary/20 rounded-3xl shadow-inner border-2">
+                <CardContent className="p-8 text-center space-y-4">
+                  <div className="bg-white w-20 h-20 rounded-full flex items-center justify-center mx-auto shadow-xl">
+                    <ShieldAlert className="h-10 w-10 text-primary" />
                   </div>
-                  <h4 className="font-bold">حالة الطلب: {request.status === 'assigned' ? 'تم الإسناد' : 'مكتمل'}</h4>
-                  <p className="text-xs text-muted-foreground">هذا الطلب لم يعد متاحاً لتقديم عروض جديدة.</p>
+                  <h4 className="font-black text-xl">حالة الطلب: {request.status === 'assigned' ? 'تم الإسناد والعمل جاري' : 'مكتمل ومغلق'}</h4>
+                  <p className="text-sm text-muted-foreground leading-relaxed">هذا الطلب في مرحلة التنفيذ النهائية ولا يقبل عروضاً جديدة حالياً.</p>
                 </CardContent>
               </Card>
             )}
+            
+            <Card className="rounded-3xl border-none bg-slate-900 text-white overflow-hidden">
+               <div className="p-6 text-right space-y-4">
+                  <h4 className="font-bold flex items-center gap-2 justify-end">نصائح القبول <Info className="h-4 w-4" /></h4>
+                  <ul className="text-xs space-y-2 opacity-80 leading-relaxed">
+                     <li>• اجعل وصفك التقني دقيقاً ومفصلاً.</li>
+                     <li>• ركز على معايير الأمان والمعايرة الطبية.</li>
+                     <li>• السعر المنطقي يبعث على الثقة أكثر من السعر المتدني جداً.</li>
+                  </ul>
+               </div>
+            </Card>
           </div>
         </div>
       </div>
