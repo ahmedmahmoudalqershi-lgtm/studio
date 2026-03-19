@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Label } from '@/components/ui/label';
 import { 
   ArrowLeft, 
   Calendar, 
@@ -107,7 +108,6 @@ export default function RequestDetailsPage() {
       updatedAt: serverTimestamp(),
     });
 
-    // إضافة التقييم في مجموعة مستقلة
     addDocumentNonBlocking(collection(firestore, 'reviews'), {
       requestId: request.id,
       hospitalId: user?.uid,
@@ -117,7 +117,6 @@ export default function RequestDetailsPage() {
       createdAt: serverTimestamp(),
     });
 
-    // تحديث إحصائيات المهندس
     updateDocumentNonBlocking(doc(firestore, 'engineerProfiles', request.assignedEngineerId), {
       totalJobs: increment(1),
       updatedAt: serverTimestamp(),
