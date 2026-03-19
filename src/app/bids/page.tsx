@@ -1,10 +1,9 @@
-
 "use client";
 
 import React from 'react';
 import { Shell } from '@/components/layout/Shell';
 import { useCollection, useUser, useFirestore, useMemoFirebase } from '@/firebase';
-import { collection, query, where, orderBy } from 'firebase/firestore';
+import { collection, query, where } from 'firebase/firestore';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -13,7 +12,9 @@ import {
   Clock, 
   DollarSign, 
   ArrowLeft,
-  Briefcase
+  Briefcase,
+  ExternalLink,
+  Search
 } from 'lucide-react';
 import Link from 'next/link';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -22,72 +23,89 @@ export default function MyBidsPage() {
   const { user } = useUser();
   const firestore = useFirestore();
 
-  // في نظام Firestore الحقيقي، سنستخدم collectionGroup للبحث عن العروض عبر جميع الطلبات
-  // للتبسيط في الـ MVP، سنفترض وجود استعلام مخصص أو جلب الطلبات المسندة
-  const bidsQuery = useMemoFirebase(() => {
+  // جلب المهام المسندة
+  const activeJobsQuery = useMemoFirebase(() => {
     if (!firestore || !user) return null;
-    // ملاحظة: هذا الاستعلام تجريبي للـ MVP
-    return query(
-      collection(firestore, 'maintenanceRequests'), 
-      where('assignedEngineerId', '==', user.uid)
-    );
-  }, [firestore, user]);
+    return query(collection(firestore, 'maintenanceRequests'), where('assignedEngineerId', '==', user.uid));
+  }, [firestore, user?.uid]);
 
-  const { data: bids, isLoading } = useCollection(bidsQuery);
+  const { data: activeJobs, isLoading: jobsLoading } = useCollection(activeJobsQuery);
 
   return (
-    <Shell role="engineer">
-      <div className="space-y-6" dir="rtl">
-        <div>
-          <h1 className="text-3xl font-bold font-headline">عروضي ومهامي</h1>
-          <p className="text-muted-foreground">تابع حالة العروض التي قدمتها والمهام المسندة إليك.</p>
+    <Shell>
+      <div className="space-y-8" dir="rtl">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div>
+            <h1 className="text-3xl font-bold font-headline">مهامي وعروضي</h1>
+            <p className="text-muted-foreground">تتبع حالة المشاريع التي تعمل عليها والعروض المقدمة.</p>
+          </div>
+          <Link href="/explore">
+            <Button className="gap-2">
+              <Search className="h-4 w-4" /> استكشاف طلبات جديدة
+            </Button>
+          </Link>
         </div>
 
-        {isLoading ? (
-          <div className="space-y-4">
-            {[1, 2, 3].map(i => <Skeleton key={i} className="h-32 w-full rounded-xl" />)}
-          </div>
-        ) : (
-          <div className="grid gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <Briefcase className="h-5 w-5 text-primary" /> المهام النشطة
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {bids?.filter(b => b.status !== 'completed').map(bid => (
-                    <div key={bid.id} className="p-4 rounded-xl border bg-muted/10 flex justify-between items-center">
-                      <div>
-                        <p className="font-bold">{bid.title}</p>
-                        <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
-                          <Clock className="h-3 w-3" /> تم الإسناد مؤخراً
-                        </p>
+        <div className="grid gap-6">
+          <Card className="border-none shadow-md overflow-hidden">
+            <CardHeader className="bg-primary/5">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Briefcase className="h-5 w-5 text-primary" /> المهام النشطة (قيد العمل)
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+              <div className="divide-y">
+                {activeJobs?.filter(j => j.status === 'assigned').map(job => (
+                  <div key={job.id} className="p-4 flex items-center justify-between hover:bg-muted/10 transition-colors">
+                    <div className="space-y-1">
+                      <p className="font-bold">{job.title}</p>
+                      <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                        <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> تم الإسناد</span>
+                        <Badge variant="secondary" className="text-[10px]">قيد التنفيذ</Badge>
                       </div>
-                      <Link href={`/requests/${bid.id}`}>
-                        <Button size="sm" variant="outline">عرض المهمة</Button>
-                      </Link>
                     </div>
-                  ))}
-                  {(!bids || bids.filter(b => b.status !== 'completed').length === 0) && (
-                    <p className="text-center py-8 text-muted-foreground italic text-sm">لا توجد مهام نشطة حالياً.</p>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
+                    <Link href={`/requests/${job.id}`}>
+                      <Button variant="ghost" size="sm" className="gap-2">
+                        <ExternalLink className="h-4 w-4" /> عرض التفاصيل
+                      </Button>
+                    </Link>
+                  </div>
+                ))}
+                {(!activeJobs || activeJobs.filter(j => j.status === 'assigned').length === 0) && !jobsLoading && (
+                  <div className="py-12 text-center text-muted-foreground">لا توجد مهام نشطة حالياً.</div>
+                )}
+                {jobsLoading && <div className="p-4"><Skeleton className="h-12 w-full" /></div>}
+              </div>
+            </CardContent>
+          </Card>
 
-            <div className="bg-primary/5 p-8 rounded-3xl border border-primary/10 text-center">
-              <Gavel className="h-12 w-12 text-primary/30 mx-auto mb-4" />
-              <h3 className="text-xl font-bold mb-2">استكشف المزيد من الفرص</h3>
-              <p className="text-muted-foreground mb-6">هناك العديد من المستشفيات التي تبحث عن خبراتك الآن.</p>
-              <Link href="/explore">
-                <Button size="lg" className="rounded-2xl px-8 shadow-xl">الذهاب للمركز التجاري</Button>
-              </Link>
-            </div>
-          </div>
-        )}
+          <Card className="border-none shadow-md overflow-hidden">
+            <CardHeader className="bg-green-50">
+              <CardTitle className="text-lg flex items-center gap-2 text-green-700">
+                <CheckCircle2 className="h-5 w-5" /> المهام المكتملة
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+              <div className="divide-y">
+                {activeJobs?.filter(j => j.status === 'completed').map(job => (
+                  <div key={job.id} className="p-4 flex items-center justify-between opacity-80">
+                    <div className="space-y-1">
+                      <p className="font-bold line-through">{job.title}</p>
+                      <p className="text-xs text-muted-foreground">تم الانتهاء بنجاح</p>
+                    </div>
+                    <Badge className="bg-green-100 text-green-700">مكتمل</Badge>
+                  </div>
+                ))}
+                {(!activeJobs || activeJobs.filter(j => j.status === 'completed').length === 0) && !jobsLoading && (
+                  <div className="py-12 text-center text-muted-foreground">لا توجد مهام مكتملة بعد.</div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </Shell>
   );
 }
+
+import { CheckCircle2 } from 'lucide-react';
