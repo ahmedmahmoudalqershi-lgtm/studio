@@ -1,17 +1,21 @@
-// مستقبل الخدمة (Service Worker) لتفعيل قابلية التثبيت كـ PWA
+
+// Service Worker for صيانة بلس
+const CACHE_NAME = 'medical-maintenance-v1';
+
+// يتم استدعاؤه عند التثبيت
 self.addEventListener('install', (event) => {
   self.skipWaiting();
 });
 
+// يتم استدعاؤه عند التفعيل
 self.addEventListener('activate', (event) => {
   event.waitUntil(clients.claim());
 });
 
-// هذا المستمع ضروري جداً لمتصفح Chrome ليعتبر الموقع "تطبيقاً" قابلاً للتثبيت
+// الحدث الأهم لتفعيل ميزة التثبيت كتطبيق (Installable App)
 self.addEventListener('fetch', (event) => {
-  event.respondWith(
-    fetch(event.request).catch(() => {
-      return caches.match(event.request);
-    })
-  );
+  // هذا المستمع فارغ ولكنه ضروري لكي يوافق متصفح Chrome على تثبيت الموقع كتطبيق
+  event.respondWith(fetch(event.request).catch(() => {
+    return caches.match(event.request);
+  }));
 });

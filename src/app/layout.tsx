@@ -50,15 +50,14 @@ export default function RootLayout({
           <Toaster />
         </FirebaseClientProvider>
         
-        {/* تسجيل Service Worker بشكل صحيح لتفعيل ميزة التثبيت كـ App */}
         <Script id="register-sw" strategy="afterInteractive">
           {`
             if ('serviceWorker' in navigator) {
               window.addEventListener('load', function() {
                 navigator.serviceWorker.register('/sw.js').then(function(registration) {
-                  console.log('Service Worker registered successfully');
-                }, function(err) {
-                  console.log('Service Worker registration failed: ', err);
+                  console.log('SW registered');
+                }).catch(function(err) {
+                  console.log('SW registration failed: ', err);
                 });
               });
             }

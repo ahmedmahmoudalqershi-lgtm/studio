@@ -8,13 +8,13 @@ export default function manifest(): MetadataRoute.Manifest {
     name: 'صيانة بلس | نظام صيانة الأجهزة الطبية',
     short_name: 'صيانة بلس',
     description: 'النظام المتكامل لإدارة صيانة الأجهزة الطبية في المستشفيات.',
-    id: 'medical-maintenance-plus-app-v2',
-    start_url: '.',
+    id: '/',
+    start_url: '/',
     scope: '/',
     display: 'standalone',
-    orientation: 'portrait',
     background_color: '#E7EBF3',
     theme_color: '#2862B4',
+    orientation: 'portrait',
     icons: [
       {
         src: APP_ICON_SVG,
@@ -27,11 +27,6 @@ export default function manifest(): MetadataRoute.Manifest {
         sizes: '512x512',
         type: 'image/svg+xml',
         purpose: 'maskable',
-      },
-      {
-        src: APP_ICON_SVG,
-        sizes: '512x512',
-        type: 'image/svg+xml',
       },
     ],
   }
