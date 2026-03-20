@@ -1,15 +1,14 @@
 
-// Service Worker بسيط ولكنه يحتوي على مستمع للأحداث fetch وهو شرط أساسي لتثبيت التطبيق (WebAPK)
+// Service Worker ضروري لتفعيل ميزة تثبيت التطبيق (WebAPK)
 self.addEventListener('install', (event) => {
-  console.log('Service Worker: Installing...');
   self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
-  console.log('Service Worker: Activated');
+  event.waitUntil(clients.claim());
 });
 
-// هذا المستمع هو السر التقني لجعل متصفح Chrome يظهر خيار "تثبيت التطبيق"
+// هذا المستمع ضروري جداً لمتصفح كروم لكي يعتبر الموقع تطبيقاً حقيقياً
 self.addEventListener('fetch', (event) => {
-  // يمكن ترك هذا فارغاً أو استخدامه للكاش، المهم وجوده لتفعيل معايير PWA
+  // يمكن إضافة استراتيجيات التخزين المؤقت هنا لاحقاً
 });

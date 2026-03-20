@@ -51,7 +51,7 @@ export default function RootLayout({
           <Toaster />
         </FirebaseClientProvider>
         
-        {/* تسجيل الـ Service Worker ضروري جداً لظهور زر التثبيت */}
+        {/* تسجيل الـ Service Worker ضروري جداً لظهور زر التثبيت الحقيقي */}
         <Script id="register-sw" strategy="afterInteractive">
           {`
             if ('serviceWorker' in navigator) {
