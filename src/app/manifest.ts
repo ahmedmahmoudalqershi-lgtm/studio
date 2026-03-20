@@ -1,9 +1,9 @@
 
 import { MetadataRoute } from 'next'
 
-// استخدام أيقونات PNG حقيقية لضمان قبول التثبيت كـ WebAPK على أندرويد
-const ICON_192 = 'https://img.icons8.com/fluency/192/medical-doctor.png';
-const ICON_512 = 'https://img.icons8.com/fluency/512/medical-doctor.png';
+// استخدام أيقونات PNG مميزة (درع طبي) لضمان قبول التثبيت كـ WebAPK على أندرويد
+const ICON_192 = 'https://img.icons8.com/fluency/192/shield-with-a-medical-cross.png';
+const ICON_512 = 'https://img.icons8.com/fluency/512/shield-with-a-medical-cross.png';
 
 export default function manifest(): MetadataRoute.Manifest {
   return {

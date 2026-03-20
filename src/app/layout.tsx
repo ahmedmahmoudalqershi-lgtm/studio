@@ -5,8 +5,8 @@ import { Toaster } from "@/components/ui/toaster";
 import { FirebaseClientProvider } from '@/firebase';
 import Script from 'next/script';
 
-// أيقونة PNG رسمية للتطبيق
-const APP_ICON_PNG = `https://img.icons8.com/fluency/512/medical-doctor.png`;
+// أيقونة PNG مميزة تعبر عن الصيانة الطبية والاحترافية (درع طبي)
+const APP_ICON_PNG = `https://img.icons8.com/fluency/512/shield-with-a-medical-cross.png`;
 
 export const viewport: Viewport = {
   themeColor: '#2862B4',
