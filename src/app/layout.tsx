@@ -5,7 +5,8 @@ import { Toaster } from "@/components/ui/toaster";
 import { FirebaseClientProvider } from '@/firebase';
 import Script from 'next/script';
 
-const APP_ICON_SVG = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%232862B4' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z'/%3E%3Ccircle cx='12' cy='12' r='10' stroke-opacity='0.1'/%3E%3C/svg%3E`;
+// أيقونة PNG رسمية للتطبيق
+const APP_ICON_PNG = `https://img.icons8.com/fluency/512/medical-doctor.png`;
 
 export const viewport: Viewport = {
   themeColor: '#2862B4',
@@ -25,8 +26,8 @@ export const metadata: Metadata = {
     title: 'صيانة بلس',
   },
   icons: {
-    icon: APP_ICON_SVG,
-    apple: APP_ICON_SVG,
+    icon: APP_ICON_PNG,
+    apple: APP_ICON_PNG,
   },
 };
 
@@ -50,6 +51,7 @@ export default function RootLayout({
           <Toaster />
         </FirebaseClientProvider>
         
+        {/* تسجيل الـ Service Worker ضروري جداً لظهور زر التثبيت */}
         <Script id="register-sw" strategy="afterInteractive">
           {`
             if ('serviceWorker' in navigator) {
