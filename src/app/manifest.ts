@@ -7,7 +7,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: 'صيانة بلس الطبية',
     short_name: 'صيانة بلس',
-    description: 'نظام متكامل لإدارة صيانة الأجهزة الطبية',
+    description: 'النظام المتكامل لإدارة صيانة الأجهزة الطبية في المستشفيات.',
     start_url: '/',
     display: 'standalone',
     background_color: '#E7EBF3',
