@@ -21,7 +21,7 @@ export const metadata: Metadata = {
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
-    statusBarStyle: 'default',
+    statusBarStyle: 'black-translucent',
     title: 'صيانة بلس',
   },
   icons: {
@@ -50,15 +50,15 @@ export default function RootLayout({
           <Toaster />
         </FirebaseClientProvider>
         
-        {/* تسجيل Service Worker لتفعيل قابلية التثبيت */}
+        {/* تسجيل Service Worker بشكل صحيح لتفعيل ميزة التثبيت كـ App */}
         <Script id="register-sw" strategy="afterInteractive">
           {`
             if ('serviceWorker' in navigator) {
               window.addEventListener('load', function() {
                 navigator.serviceWorker.register('/sw.js').then(function(registration) {
-                  console.log('SW registered: ', registration);
+                  console.log('Service Worker registered successfully');
                 }, function(err) {
-                  console.log('SW registration failed: ', err);
+                  console.log('Service Worker registration failed: ', err);
                 });
               });
             }

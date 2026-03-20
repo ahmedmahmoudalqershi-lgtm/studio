@@ -5,11 +5,11 @@ const APP_ICON_SVG = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/sv
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'صيانة بلس الطبية',
+    name: 'صيانة بلس | نظام صيانة الأجهزة الطبية',
     short_name: 'صيانة بلس',
     description: 'النظام المتكامل لإدارة صيانة الأجهزة الطبية في المستشفيات.',
-    id: 'medical-maintenance-plus-v1',
-    start_url: '/',
+    id: 'medical-maintenance-plus-app-v2',
+    start_url: '.',
     scope: '/',
     display: 'standalone',
     orientation: 'portrait',
@@ -30,7 +30,7 @@ export default function manifest(): MetadataRoute.Manifest {
       },
       {
         src: APP_ICON_SVG,
-        sizes: 'any',
+        sizes: '512x512',
         type: 'image/svg+xml',
       },
     ],
