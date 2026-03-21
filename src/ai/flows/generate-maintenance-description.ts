@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview يساعد هذا الملف مستخدمي المستشفيات في صياغة أوصاف دقيقة لطلبات الصيانة باستخدام الذكاء الاصطناعي باللغة العربية.
@@ -35,6 +36,19 @@ const prompt = ai.definePrompt({
 يجب أن يكون النص النهائي احترافياً وموجهاً لمهندس صيانة متخصص.`,
 });
 
+async function runWithRetry<I, O>(fn: (input: I) => Promise<O>, input: I, retries = 2): Promise<O> {
+  try {
+    return await fn(input);
+  } catch (error: any) {
+    const isQuotaError = error.message?.includes('429') || error.message?.includes('Quota') || error.message?.includes('RESOURCES_EXHAUSTED');
+    if (retries > 0 && isQuotaError) {
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      return runWithRetry(fn, input, retries - 1);
+    }
+    throw error;
+  }
+}
+
 const generateMaintenanceRequestDescriptionFlow = ai.defineFlow(
   {
     name: 'generateMaintenanceRequestDescriptionFlow',
@@ -42,7 +56,7 @@ const generateMaintenanceRequestDescriptionFlow = ai.defineFlow(
     outputSchema: GenerateMaintenanceRequestDescriptionOutputSchema,
   },
   async input => {
-    const {output} = await prompt(input);
+    const {output} = await runWithRetry(prompt, input);
     return output!;
   }
 );

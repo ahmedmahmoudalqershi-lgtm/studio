@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview يقوم هذا الملف بتحليل ومقارنة عروض المهندسين لمساعدة المستشفيات في اختيار العرض الأنسب.
@@ -55,7 +56,7 @@ async function runWithRetry<I, O>(fn: (input: I) => Promise<O>, input: I, retrie
   try {
     return await fn(input);
   } catch (error: any) {
-    const isQuotaError = error.message?.includes('429') || error.message?.includes('Quota');
+    const isQuotaError = error.message?.includes('429') || error.message?.includes('Quota') || error.message?.includes('RESOURCES_EXHAUSTED');
     if (retries > 0 && isQuotaError) {
       await new Promise(resolve => setTimeout(resolve, 2000));
       return runWithRetry(fn, input, retries - 1);

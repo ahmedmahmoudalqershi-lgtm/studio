@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview محرك المطابقة الذكي لربط طلبات الصيانة بالمهندسين الأكثر كفاءة.
@@ -63,7 +64,7 @@ async function runWithRetry<I, O>(fn: (input: I) => Promise<O>, input: I, retrie
   try {
     return await fn(input);
   } catch (error: any) {
-    const isQuotaError = error.message?.includes('429') || error.message?.includes('Quota');
+    const isQuotaError = error.message?.includes('429') || error.message?.includes('Quota') || error.message?.includes('RESOURCES_EXHAUSTED');
     if (retries > 0 && isQuotaError) {
       console.log('Quota hit, retrying in 2 seconds...');
       await new Promise(resolve => setTimeout(resolve, 2000));
