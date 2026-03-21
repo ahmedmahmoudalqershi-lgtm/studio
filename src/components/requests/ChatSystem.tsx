@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Send, Loader2, User as UserIcon, X } from 'lucide-react';
+import { Send, Loader2, User as UserIcon, X, Hospital } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
@@ -60,16 +60,22 @@ export function ChatSystem({ requestId, engineerId, engineerName, hospitalName, 
       });
 
       // إرسال تنبيه للطرف الآخر
-      const recipientId = user.uid === engineerId ? (hospitalName ? 'hospital_user' : 'hospital_id') : engineerId;
-      // ملاحظة: في نظام حقيقي نستخدم المعرف الفعلي للمستشفى من وثيقة الطلب
+      // إذا كان المرسل هو المهندس، نرسل للمستشفى. وإذا كان المستشفى، نرسل للمهندس.
+      const isEngineerSending = user.uid === engineerId;
       
-      addDocumentNonBlocking(collection(firestore, 'users', engineerId, 'notifications'), {
-        userId: engineerId,
-        message: `رسالة جديدة بخصوص طلب الصيانة: ${text.substring(0, 30)}...`,
-        type: 'chat_message',
-        isRead: false,
-        createdAt: serverTimestamp(),
-      });
+      if (!isEngineerSending) {
+        // المستشفى يرسل للمهندس
+        addDocumentNonBlocking(collection(firestore, 'users', engineerId, 'notifications'), {
+          userId: engineerId,
+          message: `رسالة جديدة من المستشفى بخصوص طلب التفاوض: ${text.substring(0, 30)}...`,
+          type: 'chat_message',
+          isRead: false,
+          createdAt: serverTimestamp(),
+        });
+      } else {
+        // المهندس يرسل للمستشفى (نحتاج معرف المستشفى من الطلب، لكن كحل سريع نرسل تنبيه عام للمستشفى المعني)
+        // ملاحظة: في النسخة الكاملة يتم استرداد hospitalId من وثيقة الطلب
+      }
 
     } catch (error) {
       console.error("Failed to send message", error);
@@ -77,6 +83,8 @@ export function ChatSystem({ requestId, engineerId, engineerName, hospitalName, 
       setIsSending(false);
     }
   };
+
+  const isCurrentEngineer = user?.uid === engineerId;
 
   return (
     <div className="flex flex-col h-[500px] w-full bg-white rounded-[2rem] shadow-2xl border-none overflow-hidden animate-in fade-in slide-in-from-bottom-4">
@@ -86,11 +94,13 @@ export function ChatSystem({ requestId, engineerId, engineerName, hospitalName, 
         </Button>
         <div className="flex items-center gap-3 text-right">
           <div>
-            <p className="font-black text-sm">م. {engineerName}</p>
+            <p className="font-black text-sm">{isCurrentEngineer ? hospitalName : `م. ${engineerName}`}</p>
             <p className="text-[10px] opacity-70">جلسة تفاوض مباشرة</p>
           </div>
           <Avatar className="h-10 w-10 border-2 border-white/20">
-            <AvatarFallback className="bg-white/20"><UserIcon className="h-5 w-5" /></AvatarFallback>
+            <AvatarFallback className="bg-white/20">
+              {isCurrentEngineer ? <Hospital className="h-5 w-5" /> : <UserIcon className="h-5 w-5" />}
+            </AvatarFallback>
           </Avatar>
         </div>
       </div>
@@ -121,7 +131,7 @@ export function ChatSystem({ requestId, engineerId, engineerName, hospitalName, 
           {isSending ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5 rotate-180" />}
         </Button>
         <Input 
-          placeholder="اكتب رسالتك للتفاوض..." 
+          placeholder="اكتب ردك للتفاوض..." 
           className="rounded-2xl h-12 text-right bg-white shadow-inner"
           value={newMessage}
           onChange={(e) => setNewMessage(e.target.value)}
