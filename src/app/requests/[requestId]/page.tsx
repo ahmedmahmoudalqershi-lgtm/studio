@@ -69,7 +69,7 @@ export default function RequestDetailsPage() {
   const [reviewRating, setReviewRating] = useState(5);
   const [reviewComment, setReviewComment] = useState('');
   
-  // نظام التفاوض
+  // نظام التفاوض المطور
   const [activeChat, setActiveChat] = useState<{ id: string, name: string } | null>(null);
 
   const userRef = useMemoFirebase(() => {
@@ -109,6 +109,13 @@ export default function RequestDetailsPage() {
   }, [firestore, request?.hospitalId]);
   const { data: hospitalProfile } = useDoc(hospitalProfileRef);
 
+  // جلب بيانات المهندس المسند إليه الطلب إن وجد
+  const assignedEngineerRef = useMemoFirebase(() => {
+    if (!firestore || !request?.assignedEngineerId) return null;
+    return doc(firestore, 'engineerProfiles', request.assignedEngineerId);
+  }, [firestore, request?.assignedEngineerId]);
+  const { data: assignedEngineerData } = useDoc(assignedEngineerRef);
+
   const handleHireEngineer = (engineerId: string, engineerName: string) => {
     if (!firestore || !request) return;
     setIsHiring(engineerId);
@@ -134,7 +141,6 @@ export default function RequestDetailsPage() {
       });
       
       setMatchedEngineers([]); 
-      setActiveChat(null);
     } catch (error) {
       toast({ variant: "destructive", title: "خطأ", description: "فشل إكمال عملية التوظيف." });
     } finally {
@@ -242,20 +248,6 @@ export default function RequestDetailsPage() {
     }
   }
 
-  async function handleGenerateAIBid() {
-    if (!request) return;
-    try {
-      const result = await generateBidDescription({
-        requestTitle: request.title,
-        requestDescription: request.description,
-        engineerNotes: bidDesc
-      });
-      setBidDesc(result.professionalDescription);
-    } catch (error) {
-      toast({ variant: "destructive", title: "خطأ", description: "فشل توليد العرض." });
-    }
-  }
-
   function handleSendBid() {
     if (!user || !requestId || !firestore || !request) return;
     setIsSubmittingBid(true);
@@ -299,12 +291,13 @@ export default function RequestDetailsPage() {
                 <Badge variant={request.status === 'open' ? 'secondary' : 'default'} className="rounded-lg">
                   {request.status === 'open' ? 'مفتوح للمزايدة' : request.status === 'assigned' ? 'قيد العمل' : 'مكتمل'}
                 </Badge>
-                {isEngineer && (
+                {/* زر الدردشة للمهندس المسند إليه الطلب */}
+                {isEngineer && request.assignedEngineerId === user?.uid && (
                   <Button 
                     variant="outline" 
                     size="sm" 
-                    className="gap-2 text-primary rounded-xl"
-                    onClick={() => setActiveChat({ id: user!.uid, name: 'المستشفى' })}
+                    className="gap-2 text-primary rounded-xl border-primary/20"
+                    onClick={() => setActiveChat({ id: user!.uid, name: hospitalProfile?.hospitalName || "المستشفى" })}
                   >
                     <MessageCircle className="h-4 w-4" /> فتح محادثة التفاوض
                   </Button>
@@ -328,18 +321,21 @@ export default function RequestDetailsPage() {
           </div>
         </div>
 
+        {/* واجهة الدردشة المنبثقة */}
         {activeChat && (
           <div className="fixed bottom-24 left-6 z-50 w-full max-w-md">
             <ChatSystem 
               requestId={requestId as string}
               engineerId={activeChat.id}
               engineerName={activeChat.name}
+              hospitalId={request.hospitalId}
               hospitalName={hospitalProfile?.hospitalName || "المستشفى"}
               onClose={() => setActiveChat(null)}
             />
           </div>
         )}
 
+        {/* قسم المهندسين المقترحين من AI */}
         {matchedEngineers.length > 0 && (isOwner || isAdmin) && (
           <div className="bg-emerald-50/50 p-8 rounded-[3rem] border-2 border-emerald-100 space-y-6">
             <div className="flex items-center gap-3 justify-end text-emerald-800 text-right">
@@ -413,7 +409,7 @@ export default function RequestDetailsPage() {
                                  variant="ghost" 
                                  size="sm" 
                                  className="gap-2 text-primary"
-                                 onClick={() => setActiveChat({ id: bid.engineerId, name: 'المفاوض' })}
+                                 onClick={() => setActiveChat({ id: bid.engineerId, name: 'المهندس' })}
                                >
                                  <MessageCircle className="h-4 w-4" /> فتح محادثة التفاوض
                                </Button>
@@ -434,6 +430,7 @@ export default function RequestDetailsPage() {
           </div>
 
           <div className="space-y-6">
+            {/* واجهة تقديم العرض للمهندس غير المسند إليه */}
             {!isOwner && !isAdmin && request.status === 'open' && (
               <Card className="shadow-2xl border-t-4 border-t-primary rounded-3xl sticky top-24">
                 <CardHeader className="text-right">
@@ -458,19 +455,45 @@ export default function RequestDetailsPage() {
               </Card>
             )}
             
+            {/* حالة المهندس المسند إليه العمل */}
             {isEngineer && request.status === 'assigned' && request.assignedEngineerId === user?.uid && (
               <Card className="bg-blue-50 border-blue-200 rounded-3xl p-6 text-right">
                 <div className="bg-blue-100 w-12 h-12 rounded-2xl flex items-center justify-center mb-4">
                   <Wrench className="h-6 w-6 text-primary" />
                 </div>
                 <h3 className="font-black text-xl text-primary">أنت المهندس المعتمد لهذا الطلب</h3>
-                <p className="text-sm text-muted-foreground mt-2 leading-relaxed">يرجى البدء في أعمال الصيانة والتواصل مع المستشفى عبر الدردشة لتنسيق موعد الزيارة.</p>
+                <p className="text-sm text-muted-foreground mt-2 leading-relaxed">يرجى التواصل مع المستشفى عبر الدردشة للتنسيق والبدء.</p>
                 <Button 
                   className="w-full mt-6 rounded-xl gap-2"
-                  onClick={() => setActiveChat({ id: user!.uid, name: 'المستشفى' })}
+                  onClick={() => setActiveChat({ id: user!.uid, name: hospitalProfile?.hospitalName || "المستشفى" })}
                 >
                   <MessageCircle className="h-4 w-4" /> التواصل مع المستشفى الآن
                 </Button>
+              </Card>
+            )}
+
+            {/* عرض المهندس المسند في لوحة المستشفى */}
+            {isOwner && request.status !== 'open' && request.assignedEngineerId && (
+              <Card className="border-none shadow-xl rounded-3xl bg-white overflow-hidden">
+                <CardHeader className="bg-primary/5 text-right">
+                  <CardTitle className="text-lg font-bold">المهندس المعتمد</CardTitle>
+                </CardHeader>
+                <CardContent className="p-6 text-right">
+                  <div className="flex items-center justify-between">
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="text-primary gap-2"
+                      onClick={() => setActiveChat({ id: request.assignedEngineerId!, name: assignedEngineerData?.fullName || "المهندس" })}
+                    >
+                      <MessageCircle className="h-4 w-4" /> دردشة
+                    </Button>
+                    <div>
+                      <p className="font-black text-lg">م. {assignedEngineerData?.fullName || "قيد التحميل..."}</p>
+                      <p className="text-xs text-muted-foreground">{assignedEngineerData?.specialization}</p>
+                    </div>
+                  </div>
+                </CardContent>
               </Card>
             )}
           </div>
