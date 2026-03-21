@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview محرك المطابقة الذكي لربط طلبات الصيانة بالمهندسين الأكثر كفاءة.
@@ -5,6 +6,8 @@
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
+
+export const maxDuration = 60; // Increase timeout for Vercel
 
 const EngineerBriefSchema = z.object({
   id: z.string(),

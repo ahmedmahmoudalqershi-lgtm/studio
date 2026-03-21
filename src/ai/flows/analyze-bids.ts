@@ -1,12 +1,13 @@
+
 'use server';
 /**
  * @fileOverview يقوم هذا الملف بتحليل ومقارنة عروض المهندسين لمساعدة المستشفيات في اختيار العرض الأنسب باللغة العربية.
- *
- * - analyzeBids - وظيفة تحلل العروض وتقدم توصية ذكية.
  */
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
+
+export const maxDuration = 60; // Increase timeout for Vercel
 
 const BidSchema = z.object({
   engineerName: z.string(),

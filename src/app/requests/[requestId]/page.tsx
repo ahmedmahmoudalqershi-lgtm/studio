@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect } from 'react';
@@ -165,38 +166,59 @@ export default function RequestDetailsPage() {
       });
       setAiAnalysis(result);
     } catch (error) {
-      toast({ variant: "destructive", title: "خطأ في التحليل", description: "تعذر تحليل العروض حالياً." });
+      toast({ variant: "destructive", title: "خطأ في التحليل", description: "تعذر تحليل العروض حالياً. تأكد من إعدادات الـ API." });
     } finally {
       setIsAnalyzing(false);
     }
   }
 
   async function handleSmartMatch() {
-    if (!request || !allEngineers || allEngineers.length === 0) return;
+    if (!request || !allEngineers || allEngineers.length === 0) {
+      toast({ title: "تنبيه", description: "لا يوجد مهندسين متاحين حالياً للمطابقة." });
+      return;
+    }
     setIsMatching(true);
     try {
+      // Filter engineers to ensure they meet the Zod schema requirements
+      const validEngineers = allEngineers.filter(e => 
+        e.id && e.fullName && e.specialization && 
+        typeof e.yearsExperience === 'number' && 
+        typeof e.rating === 'number'
+      );
+
+      if (validEngineers.length === 0) {
+        toast({ title: "تنبيه", description: "لا يوجد مهندسين بملفات شخصية مكتملة حالياً." });
+        setIsMatching(false);
+        return;
+      }
+
       const result = await matchEngineers({
-        requestTitle: request.title,
-        requestDescription: request.description,
-        deviceSpecialization: "Medical Equipment",
-        availableEngineers: allEngineers.map(e => ({
+        requestTitle: request.title || "طلب صيانة",
+        requestDescription: request.description || "",
+        deviceSpecialization: request.title?.split(' ')[0] || "Medical Equipment",
+        availableEngineers: validEngineers.slice(0, 20).map(e => ({
           id: e.id,
           fullName: e.fullName,
           specialization: e.specialization,
-          yearsExperience: e.yearsExperience,
-          rating: e.rating,
-          totalJobs: e.totalJobs
+          yearsExperience: e.yearsExperience || 0,
+          rating: e.rating || 5,
+          totalJobs: e.totalJobs || 0
         }))
       });
       
-      const enrichedMatches = result.recommendations.map(match => {
-        const eng = allEngineers.find(e => e.id === match.engineerId);
-        return { ...match, ...eng };
-      });
+      const enrichedMatches = result.recommendations
+        .map(match => {
+          const eng = allEngineers.find(e => e.id === match.engineerId);
+          if (!eng) return null;
+          return { ...match, ...eng };
+        })
+        .filter(m => m !== null);
+
       setMatchedEngineers(enrichedMatches);
       toast({ title: "تمت المطابقة", description: "تم العثور على أفضل المهندسين المناسبين لهذا الطلب." });
     } catch (error) {
-      toast({ variant: "destructive", title: "خطأ", description: "فشل نظام المطابقة في العمل." });
+      console.error("Match error:", error);
+      toast({ variant: "destructive", title: "خطأ", description: "فشل نظام المطابقة. يرجى التأكد من إعدادات مفتاح الـ API والمهلة." });
     } finally {
       setIsMatching(false);
     }

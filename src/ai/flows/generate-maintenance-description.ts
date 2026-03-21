@@ -1,12 +1,13 @@
+
 'use server';
 /**
  * @fileOverview يساعد هذا الملف مستخدمي المستشفيات في صياغة أوصاف دقيقة لطلبات الصيانة باستخدام الذكاء الاصطناعي باللغة العربية.
- *
- * - generateMaintenanceRequestDescription - وظيفة تولد وصفاً شاملاً للصيانة.
  */
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
+
+export const maxDuration = 60; // Increase timeout for Vercel
 
 const GenerateMaintenanceRequestDescriptionInputSchema = z.object({
   deviceName: z.string().describe('اسم الجهاز الطبي الذي يحتاج لصيانة.'),
