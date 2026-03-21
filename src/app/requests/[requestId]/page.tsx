@@ -69,7 +69,6 @@ export default function RequestDetailsPage() {
   const [reviewRating, setReviewRating] = useState(5);
   const [reviewComment, setReviewComment] = useState('');
   
-  // نظام التفاوض المطور
   const [activeChat, setActiveChat] = useState<{ id: string, name: string } | null>(null);
 
   const userRef = useMemoFirebase(() => {
@@ -109,7 +108,6 @@ export default function RequestDetailsPage() {
   }, [firestore, request?.hospitalId]);
   const { data: hospitalProfile } = useDoc(hospitalProfileRef);
 
-  // جلب بيانات المهندس المسند إليه الطلب إن وجد
   const assignedEngineerRef = useMemoFirebase(() => {
     if (!firestore || !request?.assignedEngineerId) return null;
     return doc(firestore, 'engineerProfiles', request.assignedEngineerId);
@@ -201,24 +199,32 @@ export default function RequestDetailsPage() {
   };
 
   async function handleSmartMatch() {
-    if (!request || !allEngineers || allEngineers.length === 0) {
-      toast({ title: "تنبيه", description: "لا يوجد مهندسين متاحين حالياً للمطابقة." });
+    if (!request || !allEngineers) {
+      toast({ title: "تنبيه", description: "جاري تحميل البيانات، يرجى المحاولة بعد قليل." });
       return;
     }
+
+    const validEngineers = allEngineers.filter(e => e.id && e.fullName && e.specialization);
+
+    if (validEngineers.length === 0) {
+      toast({ title: "تنبيه", description: "لا يوجد مهندسين بملفات مكتملة حالياً للمطابقة." });
+      return;
+    }
+
     setIsMatching(true);
     setMatchedEngineers([]); 
+    
     try {
-      const validEngineers = allEngineers.filter(e => e.id && e.fullName && e.specialization);
       const result = await matchEngineers({
-        requestTitle: request.title,
-        requestDescription: request.description,
+        requestTitle: request.title || "طلب صيانة",
+        requestDescription: request.description || "لا يوجد وصف",
         availableEngineers: validEngineers.map(e => ({
           id: e.id,
           fullName: e.fullName,
           specialization: e.specialization,
-          yearsExperience: e.yearsExperience || 0,
-          rating: e.rating || 5,
-          totalJobs: e.totalJobs || 0
+          yearsExperience: Number(e.yearsExperience) || 0,
+          rating: Number(e.rating) || 5,
+          totalJobs: Number(e.totalJobs) || 0
         }))
       });
       
@@ -239,10 +245,13 @@ export default function RequestDetailsPage() {
 
       if (enrichedMatches.length > 0) {
         setMatchedEngineers(enrichedMatches);
-        toast({ title: "تمت المطابقة", description: "تم العثور على أفضل المهندسين المناسبين لهذا الطلب." });
+        toast({ title: "تمت المطابقة", description: "تم العثور على أفضل المهندسين المناسبين لطلبك." });
+      } else {
+        toast({ title: "تنبيه", description: "لم يجد النظام مهندسين مطابقين تماماً لهذه المواصفات حالياً." });
       }
     } catch (error) {
-      toast({ variant: "destructive", title: "خطأ", description: "فشل نظام المطابقة الذكي." });
+      console.error("Smart match error:", error);
+      toast({ variant: "destructive", title: "خطأ", description: "فشل نظام المطابقة الذكي. يرجى المحاولة لاحقاً." });
     } finally {
       setIsMatching(false);
     }
@@ -291,7 +300,6 @@ export default function RequestDetailsPage() {
                 <Badge variant={request.status === 'open' ? 'secondary' : 'default'} className="rounded-lg">
                   {request.status === 'open' ? 'مفتوح للمزايدة' : request.status === 'assigned' ? 'قيد العمل' : 'مكتمل'}
                 </Badge>
-                {/* زر الدردشة للمهندس المسند إليه الطلب */}
                 {isEngineer && request.assignedEngineerId === user?.uid && (
                   <Button 
                     variant="outline" 
@@ -321,7 +329,6 @@ export default function RequestDetailsPage() {
           </div>
         </div>
 
-        {/* واجهة الدردشة المنبثقة */}
         {activeChat && (
           <div className="fixed bottom-24 left-6 z-50 w-full max-w-md">
             <ChatSystem 
@@ -335,13 +342,12 @@ export default function RequestDetailsPage() {
           </div>
         )}
 
-        {/* قسم المهندسين المقترحين من AI */}
         {matchedEngineers.length > 0 && (isOwner || isAdmin) && (
           <div className="bg-emerald-50/50 p-8 rounded-[3rem] border-2 border-emerald-100 space-y-6">
             <div className="flex items-center gap-3 justify-end text-emerald-800 text-right">
               <div>
                 <h2 className="text-2xl font-black">أفضل المهندسين المناسبين</h2>
-                <p className="text-xs opacity-70">ابدأ التفاوض معهم للوصول لأفضل اتفاق قبل التوظيف.</p>
+                <p className="text-xs opacity-70">بناءً على تخصص الجهاز وخبرة المهندسين المسجلين.</p>
               </div>
               <div className="bg-emerald-100 p-3 rounded-2xl"><Sparkles className="h-6 w-6" /></div>
             </div>
@@ -425,12 +431,16 @@ export default function RequestDetailsPage() {
                     </CardContent>
                   </Card>
                 ))}
+                {(!bids || bids.length === 0) && (
+                  <div className="p-8 text-center text-muted-foreground italic bg-white rounded-3xl shadow-sm">
+                    لم يتم تقديم أي عروض بعد لهذا الطلب.
+                  </div>
+                )}
               </div>
             </div>
           </div>
 
           <div className="space-y-6">
-            {/* واجهة تقديم العرض للمهندس غير المسند إليه */}
             {!isOwner && !isAdmin && request.status === 'open' && (
               <Card className="shadow-2xl border-t-4 border-t-primary rounded-3xl sticky top-24">
                 <CardHeader className="text-right">
@@ -455,7 +465,6 @@ export default function RequestDetailsPage() {
               </Card>
             )}
             
-            {/* حالة المهندس المسند إليه العمل */}
             {isEngineer && request.status === 'assigned' && request.assignedEngineerId === user?.uid && (
               <Card className="bg-blue-50 border-blue-200 rounded-3xl p-6 text-right">
                 <div className="bg-blue-100 w-12 h-12 rounded-2xl flex items-center justify-center mb-4">
@@ -472,7 +481,6 @@ export default function RequestDetailsPage() {
               </Card>
             )}
 
-            {/* عرض المهندس المسند في لوحة المستشفى */}
             {isOwner && request.status !== 'open' && request.assignedEngineerId && (
               <Card className="border-none shadow-xl rounded-3xl bg-white overflow-hidden">
                 <CardHeader className="bg-primary/5 text-right">
