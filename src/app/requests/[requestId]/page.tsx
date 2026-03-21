@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect } from 'react';
@@ -167,7 +166,7 @@ export default function RequestDetailsPage() {
       });
       setAiAnalysis(result);
     } catch (error) {
-      toast({ variant: "destructive", title: "خطأ في التحليل", description: "تعذر تحليل العروض حالياً. تأكد من إعدادات الـ API." });
+      toast({ variant: "destructive", title: "خطأ في التحليل", description: "تعذر تحليل العروض حالياً." });
     } finally {
       setIsAnalyzing(false);
     }
@@ -181,6 +180,7 @@ export default function RequestDetailsPage() {
     setIsMatching(true);
     setMatchedEngineers([]); 
     try {
+      // إرسال كافة المهندسين ذوي البيانات المكتملة للتحليل
       const validEngineers = allEngineers.filter(e => 
         e.id && e.fullName && e.specialization
       );
@@ -192,9 +192,8 @@ export default function RequestDetailsPage() {
       }
 
       const result = await matchEngineers({
-        requestTitle: request.title || "طلب صيانة",
-        requestDescription: request.description || "",
-        deviceSpecialization: request.title?.split(' ')[0] || "Medical Equipment",
+        requestTitle: request.title,
+        requestDescription: request.description,
         availableEngineers: validEngineers.map(e => ({
           id: e.id,
           fullName: e.fullName,
@@ -224,7 +223,7 @@ export default function RequestDetailsPage() {
         setMatchedEngineers(enrichedMatches);
         toast({ title: "تمت المطابقة", description: "تم العثور على أفضل المهندسين المناسبين لهذا الطلب." });
       } else {
-        toast({ title: "تنبيه", description: "لم يتم العثور على مطابقات دقيقة لهذا الطلب حالياً." });
+        toast({ title: "تنبيه", description: "لم يتم العثور على مهندسين بتخصص مطابق تماماً في النظام حالياً." });
       }
     } catch (error) {
       console.error("Match error:", error);

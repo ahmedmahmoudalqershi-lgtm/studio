@@ -1,6 +1,7 @@
 'use server';
 /**
  * @fileOverview محرك المطابقة الذكي لربط طلبات الصيانة بالمهندسين الأكثر كفاءة.
+ * تم تحسينه ليفهم السياق التقني الكامل بدلاً من الكلمات المنفردة.
  */
 
 import {ai} from '@/ai/genkit';
@@ -16,17 +17,16 @@ const EngineerBriefSchema = z.object({
 });
 
 const MatchEngineersInputSchema = z.object({
-  requestTitle: z.string(),
-  requestDescription: z.string(),
-  deviceSpecialization: z.string(),
-  availableEngineers: z.array(EngineerBriefSchema),
+  requestTitle: z.string().describe('عنوان طلب الصيانة بالكامل.'),
+  requestDescription: z.string().describe('وصف العطل التقني.'),
+  availableEngineers: z.array(EngineerBriefSchema).describe('قائمة المهندسين المتاحين للتحليل.'),
 });
 export type MatchEngineersInput = z.infer<typeof MatchEngineersInputSchema>;
 
 const MatchResultSchema = z.object({
   engineerId: z.string(),
-  matchScore: z.number().describe('نسبة المطابقة من 100'),
-  reason: z.string().describe('سبب الترشيح باللغة العربية'),
+  matchScore: z.number().describe('نسبة المطابقة من 100 بناءً على الملاءمة التقنية.'),
+  reason: z.string().describe('سبب الترشيح الفني المفصل باللغة العربية.'),
 });
 
 const MatchEngineersOutputSchema = z.object({
@@ -38,23 +38,23 @@ const prompt = ai.definePrompt({
   name: 'matchEngineersPrompt',
   input: {schema: MatchEngineersInputSchema},
   output: {schema: MatchEngineersOutputSchema},
-  prompt: `أنت خبير توظيف تقني في مجال الهندسة الطبية. مهمتك هي اختيار أفضل 3 مهندسين من القائمة المتاحة للقيام بطلب صيانة محدد.
+  prompt: `أنت خبير توظيف فني متخصص في الهندسة الطبية الحيوية. مهمتك هي تحليل طلب صيانة وترشيح أفضل 3 مهندسين من القائمة المتاحة.
 
-الطلب: {{{requestTitle}}}
-التخصص المطلوب: {{{deviceSpecialization}}}
-الوصف الفني: {{{requestDescription}}}
+الطلب المراد تغطيته:
+- العنوان: {{{requestTitle}}}
+- الوصف الفني: {{{requestDescription}}}
 
-المهندسون المتاحون:
+المهندسون المرشحون للتقييم:
 {{#each availableEngineers}}
-- {{{this.fullName}}} (تخصص: {{{this.specialization}}}, خبرة: {{{this.yearsExperience}}} سنة, تقييم: {{{this.rating}}}/5, أعمال منجزة: {{{this.totalJobs}}})
+- المعرف: {{{this.id}}} | الاسم: {{{this.fullName}}} | التخصص: {{{this.specialization}}} | خبرة: {{{this.yearsExperience}}} سنة | تقييم: {{{this.rating}}} | أعمال سابقة: {{{this.totalJobs}}}
 {{/each}}
 
-قم بتحليل البيانات واختر أفضل المطابقات بناءً على:
-1. تطابق التخصص الدقيق أو القريب.
-2. سنوات الخبرة في هذا النوع من الأجهزة.
-3. سجل الإنجاز والتقييم.
+قواعد المطابقة المنطقية:
+1. المطابقة الدلالية: ابحث عن التوافق التقني (مثلاً: إذا كان الطلب "أشعة مقطعية" والمهندس تخصصه "أشعة"، فهذه مطابقة ممتازة).
+2. الخبرة النوعية: فضل المهندس الذي يملك سنوات خبرة أكثر في نفس المجال التقني للطلب.
+3. التقييم والإنجاز: فضل المهندسين ذوي التقييمات العالية والأعمال المنجزة الناجحة.
 
-يجب أن تكون الأسباب مقنعة ومكتوبة باللغة العربية المهنية.`,
+يجب أن تعيد قائمة بأفضل 3 مهندسين مع ذكر سبب "تقني ومنطقي" جداً لكل ترشيح باللغة العربية. إذا لم تجد مهندس بتخصص مطابق تماماً، ابحث عن الأقرب مهارةً.`,
 });
 
 const matchEngineersFlow = ai.defineFlow(
