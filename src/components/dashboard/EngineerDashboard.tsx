@@ -1,4 +1,3 @@
-
 "use client";
 
 import React from 'react';
@@ -17,7 +16,8 @@ import {
   CheckCircle2,
   TrendingUp,
   Award,
-  MessageSquareQuote
+  MessageSquareQuote,
+  Target
 } from 'lucide-react';
 import Link from 'next/link';
 import { useCollection, useUser, useFirestore, useMemoFirebase } from '@/firebase';
@@ -42,18 +42,18 @@ export function EngineerDashboard() {
 
   const { data: activeJobs, isLoading: jobsLoading } = useCollection(activeJobsQuery);
 
-  const reviewsQuery = useMemoFirebase(() => {
-    if (!firestore || !user) return null;
-    return query(collection(firestore, 'reviews'), where('engineerId', '==', user.uid), limit(3));
-  }, [firestore, user?.uid]);
-  const { data: reviews } = useCollection(reviewsQuery);
-
   const openRequestsQuery = useMemoFirebase(() => {
     if (!firestore || !user) return null;
-    return query(collection(firestore, 'maintenanceRequests'), where('status', '==', 'open'), limit(5));
+    return query(collection(firestore, 'maintenanceRequests'), where('status', '==', 'open'), limit(10));
   }, [firestore, user?.uid]);
 
   const { data: openRequests, isLoading: requestsLoading } = useCollection(openRequestsQuery);
+
+  const matchedRequests = openRequests?.filter(req => {
+    if (!profile?.specialization) return false;
+    const spec = profile.specialization.toLowerCase();
+    return req.title.toLowerCase().includes(spec) || req.description.toLowerCase().includes(spec);
+  }) || [];
 
   if (profileLoading || jobsLoading || requestsLoading) {
     return (
@@ -81,51 +81,32 @@ export function EngineerDashboard() {
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card className="border-none shadow-xl rounded-3xl overflow-hidden hover:scale-[1.02] transition-transform">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between mb-4">
-              <div className="bg-yellow-100 p-2 rounded-xl">
-                 <Star className="h-5 w-5 text-yellow-600 fill-yellow-600" />
-              </div>
-              <p className="text-sm font-bold text-muted-foreground">التقييم</p>
-            </div>
-            <p className="text-4xl font-black">{profile?.rating || '5.0'}</p>
+        <Card className="border-none shadow-xl rounded-3xl overflow-hidden">
+          <CardContent className="p-6 text-center">
+            <Star className="h-8 w-8 text-yellow-500 mx-auto mb-2 fill-yellow-500" />
+            <p className="text-sm font-bold text-muted-foreground">تقييمك الحالي</p>
+            <p className="text-3xl font-black">{profile?.rating || '5.0'}</p>
           </CardContent>
         </Card>
-
-        <Card className="border-none shadow-xl rounded-3xl overflow-hidden hover:scale-[1.02] transition-transform">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between mb-4">
-              <div className="bg-green-100 p-2 rounded-xl">
-                 <CheckCircle2 className="h-5 w-5 text-green-600" />
-              </div>
-              <p className="text-sm font-bold text-muted-foreground">منجز</p>
-            </div>
-            <p className="text-4xl font-black">{profile?.totalJobs || 0}</p>
+        <Card className="border-none shadow-xl rounded-3xl overflow-hidden">
+          <CardContent className="p-6 text-center">
+            <CheckCircle2 className="h-8 w-8 text-green-500 mx-auto mb-2" />
+            <p className="text-sm font-bold text-muted-foreground">مهام منجزة</p>
+            <p className="text-3xl font-black">{profile?.totalJobs || 0}</p>
           </CardContent>
         </Card>
-
-        <Card className="border-none shadow-xl rounded-3xl overflow-hidden hover:scale-[1.02] transition-transform">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between mb-4">
-              <div className="bg-blue-100 p-2 rounded-xl">
-                 <Wrench className="h-5 w-5 text-blue-600" />
-              </div>
-              <p className="text-sm font-bold text-muted-foreground">نشط</p>
-            </div>
-            <p className="text-4xl font-black">{activeJobs?.filter(j => j.status === 'assigned').length || 0}</p>
+        <Card className="border-none shadow-xl rounded-3xl overflow-hidden bg-emerald-50 border-2 border-emerald-100">
+          <CardContent className="p-6 text-center">
+            <Target className="h-8 w-8 text-emerald-600 mx-auto mb-2" />
+            <p className="text-sm font-bold text-emerald-700">طلبات مطابقة</p>
+            <p className="text-3xl font-black text-emerald-900">{matchedRequests.length}</p>
           </CardContent>
         </Card>
-
-        <Card className="border-none shadow-xl rounded-3xl overflow-hidden bg-primary text-primary-foreground hover:scale-[1.02] transition-transform">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between mb-4">
-              <div className="bg-white/20 p-2 rounded-xl">
-                 <Award className="h-5 w-5 text-white" />
-              </div>
-              <p className="text-sm font-bold opacity-80">الخبرة</p>
-            </div>
-            <p className="text-4xl font-black">{profile?.yearsExperience || 0} سنة</p>
+        <Card className="border-none shadow-xl rounded-3xl overflow-hidden">
+          <CardContent className="p-6 text-center">
+            <Briefcase className="h-8 w-8 text-primary mx-auto mb-2" />
+            <p className="text-sm font-bold text-muted-foreground">تخصصك</p>
+            <p className="text-sm font-black truncate">{profile?.specialization || 'صيانة عامة'}</p>
           </CardContent>
         </Card>
       </div>
@@ -133,65 +114,36 @@ export function EngineerDashboard() {
       <div className="grid gap-8 md:grid-cols-2">
         <div className="space-y-6">
           <Card className="border-none shadow-2xl rounded-[2rem] overflow-hidden">
-            <CardHeader className="bg-muted/30 border-b p-6">
+            <CardHeader className="bg-emerald-50 border-b p-6">
                <div className="flex items-center justify-between">
-                  <Link href="/explore">
-                     <Button variant="ghost" size="sm" className="text-primary hover:bg-primary/5">عرض الكل</Button>
-                  </Link>
+                  <Badge className="bg-emerald-500">نظام المطابقة الذكي</Badge>
                   <CardTitle className="text-xl font-bold flex items-center gap-2">
-                     <span>طلبات صيانة متاحة</span>
-                     <TrendingUp className="h-5 w-5 text-primary" />
+                     <span>فرص تناسب مهاراتك</span>
+                     <Target className="h-5 w-5 text-emerald-600" />
                   </CardTitle>
                </div>
             </CardHeader>
             <CardContent className="p-6 space-y-4">
-              {openRequests?.map(req => (
+              {matchedRequests.length > 0 ? matchedRequests.map(req => (
                 <Link key={req.id} href={`/requests/${req.id}`}>
-                  <div className="p-5 border-2 border-transparent hover:border-primary/20 bg-muted/20 hover:bg-white rounded-2xl transition-all cursor-pointer group shadow-sm">
+                  <div className="p-5 border-2 border-emerald-100 bg-emerald-50/20 hover:bg-emerald-50 rounded-2xl transition-all cursor-pointer group shadow-sm">
                     <div className="flex justify-between items-start mb-2">
-                      <Badge variant={req.urgency === 'critical' ? 'destructive' : 'outline'} className="text-[10px] rounded-lg">
-                         {req.urgency === 'critical' ? 'حرج' : 'عادي'}
-                      </Badge>
+                      <Badge variant="outline" className="text-emerald-700 border-emerald-200">مطابقة عالية</Badge>
                       <h4 className="font-bold text-lg group-hover:text-primary transition-colors">{req.title}</h4>
                     </div>
-                    <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed text-right mb-4">{req.description}</p>
-                    <div className="flex items-center gap-2 text-[10px] text-muted-foreground justify-end">
-                       <span>المستشفى التخصصي</span>
-                       <MapPin className="h-3 w-3" />
-                    </div>
+                    <p className="text-xs text-muted-foreground line-clamp-1 text-right">{req.description}</p>
                   </div>
                 </Link>
-              ))}
+              )) : (
+                <div className="text-center py-10 text-muted-foreground italic">
+                   لا توجد طلبات تطابق تخصصك الدقيق حالياً.
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
 
         <div className="space-y-6">
-          <Card className="border-none shadow-2xl rounded-[2rem] overflow-hidden">
-            <CardHeader className="bg-primary/5 border-b p-6 text-right">
-               <CardTitle className="text-xl font-bold flex items-center gap-2 justify-end text-primary">
-                  <span>آراء المستشفيات الأخيرة</span>
-                  <MessageSquareQuote className="h-5 w-5" />
-               </CardTitle>
-            </CardHeader>
-            <CardContent className="p-6 space-y-4">
-              {reviews?.map(review => (
-                <div key={review.id} className="p-4 bg-muted/10 rounded-2xl border border-transparent hover:border-primary/10 transition-all">
-                  <div className="flex justify-between items-center mb-2">
-                    <div className="flex gap-1">
-                      {[1,2,3,4,5].map(s => <Star key={s} className={`h-3 w-3 ${review.rating >= s ? "text-yellow-500 fill-yellow-500" : "text-muted"}`} />)}
-                    </div>
-                    <p className="text-xs font-bold">مستشفى معتمد</p>
-                  </div>
-                  <p className="text-xs text-muted-foreground italic text-right leading-relaxed">"{review.comment || "لا يوجد تعليق"}"</p>
-                </div>
-              ))}
-              {(!reviews || reviews.length === 0) && (
-                <div className="text-center py-10 text-muted-foreground italic">لا توجد تقييمات بعد.</div>
-              )}
-            </CardContent>
-          </Card>
-
           <Card className="border-none shadow-2xl rounded-[2rem] overflow-hidden border-t-4 border-t-primary">
             <CardHeader className="bg-primary/5 border-b p-6 text-right">
                <CardTitle className="text-xl font-bold flex items-center gap-2 justify-end text-primary">

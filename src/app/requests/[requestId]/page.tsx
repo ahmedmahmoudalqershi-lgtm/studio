@@ -1,7 +1,6 @@
-
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Shell } from '@/components/layout/Shell';
 import { useDoc, useFirestore, useUser, useCollection, useMemoFirebase } from '@/firebase';
@@ -25,7 +24,8 @@ import {
   ShieldAlert,
   Info,
   DollarSign,
-  Timer
+  Timer,
+  Target
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -34,6 +34,7 @@ import { useToast } from '@/hooks/use-toast';
 import { analyzeBids } from '@/ai/flows/analyze-bids';
 import { troubleshootDevice, type TroubleshootOutput } from '@/ai/flows/troubleshoot-device';
 import { generateBidDescription } from '@/ai/flows/generate-bid-description';
+import { matchEngineers } from '@/ai/flows/match-engineers';
 import {
   Dialog,
   DialogContent,
@@ -58,8 +59,10 @@ export default function RequestDetailsPage() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isTroubleshooting, setIsTroubleshooting] = useState(false);
   const [isGeneratingBidAI, setIsGeneratingBidAI] = useState(false);
+  const [isMatching, setIsMatching] = useState(false);
   const [aiAnalysis, setAiAnalysis] = useState<any>(null);
   const [troubleshootResult, setTroubleshootResult] = useState<TroubleshootOutput | null>(null);
+  const [matchedEngineers, setMatchedEngineers] = useState<any[]>([]);
   const [reviewRating, setReviewRating] = useState(5);
   const [reviewComment, setReviewComment] = useState('');
 
@@ -83,33 +86,27 @@ export default function RequestDetailsPage() {
     if (!firestore || !requestId || !user || !request) return null;
     const bidsCol = collection(firestore, 'maintenanceRequests', requestId as string, 'bids');
     
-    if (isAdmin) {
-      return bidsCol;
-    }
-    
-    if (user.uid === request.hospitalId) {
-      return query(bidsCol, where('hospitalId', '==', user.uid));
-    } 
-    
+    if (isAdmin) return bidsCol;
+    if (user.uid === request.hospitalId) return query(bidsCol, where('hospitalId', '==', user.uid));
     return query(bidsCol, where('engineerId', '==', user.uid));
   }, [firestore, requestId, user?.uid, request?.hospitalId, isAdmin, request]);
   
   const { data: bids, isLoading: bidsLoading } = useCollection(bidsQuery);
 
+  const engineersRef = useMemoFirebase(() => firestore ? collection(firestore, 'engineerProfiles') : null, [firestore]);
+  const { data: allEngineers } = useCollection(engineersRef);
+
   const handleAcceptBid = (bid: any) => {
     if (!firestore || !request) return;
-
     updateDocumentNonBlocking(doc(firestore, 'maintenanceRequests', request.id), {
       status: 'assigned',
       assignedEngineerId: bid.engineerId,
       updatedAt: serverTimestamp(),
     });
-
     updateDocumentNonBlocking(doc(firestore, 'maintenanceRequests', request.id, 'bids', bid.id), {
       status: 'accepted',
       updatedAt: serverTimestamp(),
     });
-
     addDocumentNonBlocking(collection(firestore, 'users', bid.engineerId, 'notifications'), {
       userId: bid.engineerId,
       message: `تم قبول عرضك لطلب الصيانة: ${request.title}`,
@@ -117,18 +114,15 @@ export default function RequestDetailsPage() {
       isRead: false,
       createdAt: serverTimestamp(),
     });
-
     toast({ title: "تم قبول العرض", description: "تم إسناد المهمة للمهندس بنجاح." });
   };
 
   const handleCompleteJob = () => {
     if (!firestore || !request) return;
-
     updateDocumentNonBlocking(doc(firestore, 'maintenanceRequests', request.id), {
       status: 'completed',
       updatedAt: serverTimestamp(),
     });
-
     if (request.assignedEngineerId) {
       addDocumentNonBlocking(collection(firestore, 'reviews'), {
         requestId: request.id,
@@ -138,12 +132,10 @@ export default function RequestDetailsPage() {
         comment: reviewComment,
         createdAt: serverTimestamp(),
       });
-
       updateDocumentNonBlocking(doc(firestore, 'engineerProfiles', request.assignedEngineerId), {
         totalJobs: increment(1),
         updatedAt: serverTimestamp(),
       });
-
       addDocumentNonBlocking(collection(firestore, 'users', request.assignedEngineerId, 'notifications'), {
         userId: request.assignedEngineerId,
         message: `تم إكمال وتقييم مهمتك لطلب: ${request.title}`,
@@ -152,7 +144,6 @@ export default function RequestDetailsPage() {
         createdAt: serverTimestamp(),
       });
     }
-
     toast({ title: "تم إكمال المهمة", description: "تم إغلاق الطلب بنجاح." });
     router.push('/dashboard');
   };
@@ -177,6 +168,37 @@ export default function RequestDetailsPage() {
       toast({ variant: "destructive", title: "خطأ في التحليل", description: "تعذر تحليل العروض حالياً." });
     } finally {
       setIsAnalyzing(false);
+    }
+  }
+
+  async function handleSmartMatch() {
+    if (!request || !allEngineers || allEngineers.length === 0) return;
+    setIsMatching(true);
+    try {
+      const result = await matchEngineers({
+        requestTitle: request.title,
+        requestDescription: request.description,
+        deviceSpecialization: "Medical Equipment",
+        availableEngineers: allEngineers.map(e => ({
+          id: e.id,
+          fullName: e.fullName,
+          specialization: e.specialization,
+          yearsExperience: e.yearsExperience,
+          rating: e.rating,
+          totalJobs: e.totalJobs
+        }))
+      });
+      
+      const enrichedMatches = result.recommendations.map(match => {
+        const eng = allEngineers.find(e => e.id === match.engineerId);
+        return { ...match, ...eng };
+      });
+      setMatchedEngineers(enrichedMatches);
+      toast({ title: "تمت المطابقة", description: "تم العثور على أفضل المهندسين المناسبين لهذا الطلب." });
+    } catch (error) {
+      toast({ variant: "destructive", title: "خطأ", description: "فشل نظام المطابقة في العمل." });
+    } finally {
+      setIsMatching(false);
     }
   }
 
@@ -229,7 +251,6 @@ export default function RequestDetailsPage() {
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     });
-
     addDocumentNonBlocking(collection(firestore, 'users', request.hospitalId, 'notifications'), {
       userId: request.hospitalId,
       message: `وصلك عرض صيانة جديد لطلبك: ${request.title}`,
@@ -237,7 +258,6 @@ export default function RequestDetailsPage() {
       isRead: false,
       createdAt: serverTimestamp(),
     });
-
     toast({ title: "تم تقديم العرض", description: "تم إرسال عرضك بنجاح." });
     router.push('/dashboard');
   }
@@ -268,10 +288,16 @@ export default function RequestDetailsPage() {
           
           <div className="flex gap-2">
             {isOwner && request.status === 'open' && (
-              <Button variant="outline" onClick={handleTroubleshoot} disabled={isTroubleshooting} className="gap-2 border-primary/50 text-primary rounded-xl">
-                {isTroubleshooting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-                استكشاف الأعطال ذكياً
-              </Button>
+              <>
+                <Button variant="outline" onClick={handleSmartMatch} disabled={isMatching} className="gap-2 border-emerald-500 text-emerald-600 rounded-xl hover:bg-emerald-50">
+                  {isMatching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Target className="h-4 w-4" />}
+                  مطابقة المهندسين
+                </Button>
+                <Button variant="outline" onClick={handleTroubleshoot} disabled={isTroubleshooting} className="gap-2 border-primary/50 text-primary rounded-xl">
+                  {isTroubleshooting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                  استكشاف الأعطال
+                </Button>
+              </>
             )}
             {isOwner && request.status === 'assigned' && (
               <Dialog>
@@ -301,6 +327,33 @@ export default function RequestDetailsPage() {
           </div>
         </div>
 
+        {matchedEngineers.length > 0 && isOwner && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 animate-in fade-in slide-in-from-top-4">
+            <div className="col-span-full flex items-center gap-2 text-emerald-700 font-black mb-2 justify-end">
+              <span>المهندسون الأكثر مطابقة لهذا الطلب (AI Recommendation)</span>
+              <Target className="h-5 w-5" />
+            </div>
+            {matchedEngineers.map((eng, idx) => (
+              <Card key={eng.id} className="border-2 border-emerald-100 bg-emerald-50/30 rounded-3xl overflow-hidden hover:border-emerald-500 transition-all group">
+                <CardContent className="p-4 text-right relative">
+                  <Badge className="absolute top-2 left-2 bg-emerald-500 font-bold">{eng.matchScore}% مطابقة</Badge>
+                  <div className="flex flex-col items-center gap-2 mt-4">
+                    <div className="bg-emerald-100 p-3 rounded-full">
+                      <User className="h-6 w-6 text-emerald-700" />
+                    </div>
+                    <p className="font-black text-emerald-900">{eng.fullName}</p>
+                    <p className="text-[10px] text-muted-foreground">{eng.specialization}</p>
+                    <div className="flex gap-1 text-yellow-500">
+                      {[1,2,3,4,5].map(s => <Star key={s} className={`h-3 w-3 ${eng.rating >= s ? "fill-current" : ""}`} />)}
+                    </div>
+                    <p className="text-[10px] text-emerald-800 font-medium text-center mt-2 line-clamp-2">"{eng.reason}"</p>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+
         {troubleshootResult && (
           <Card className="bg-blue-50 border-blue-200 rounded-3xl overflow-hidden shadow-lg border-2">
             <CardHeader className="bg-blue-100/50 pb-2 text-right">
@@ -324,13 +377,6 @@ export default function RequestDetailsPage() {
                   </ul>
                 </div>
               </div>
-              <div className="flex items-start gap-3 p-4 bg-amber-50 rounded-2xl border border-amber-200 text-amber-900 text-sm justify-end">
-                <div className="text-right flex-1">
-                  <p className="font-bold mb-1">تنبيه أمان:</p>
-                  <p>{troubleshootResult.safetyWarning}</p>
-                </div>
-                <ShieldAlert className="h-5 w-5 shrink-0 text-amber-600 mt-1" />
-              </div>
             </CardContent>
           </Card>
         )}
@@ -343,10 +389,6 @@ export default function RequestDetailsPage() {
               </CardHeader>
               <CardContent className="p-8 text-right">
                 <p className="text-muted-foreground whitespace-pre-wrap leading-relaxed text-lg">{request.description}</p>
-                <div className="flex flex-wrap gap-4 mt-8 pt-6 border-t text-sm text-muted-foreground justify-end">
-                  <Badge variant="secondary" className="gap-1"><Calendar className="h-3 w-3" /> تم النشر: {request.createdAt ? new Date(request.createdAt).toLocaleDateString('ar-SA') : 'اليوم'}</Badge>
-                  <Badge variant="secondary" className="gap-1"><Clock className="h-3 w-3" /> الأولوية: {request.urgency}</Badge>
-                </div>
               </CardContent>
             </Card>
 
@@ -367,9 +409,6 @@ export default function RequestDetailsPage() {
                   <div className="bg-white p-6 rounded-2xl shadow-sm border border-primary/10">
                     <p className="font-black text-xl text-primary">{aiAnalysis.bestOption.engineerName}</p>
                     <p className="text-sm text-muted-foreground mt-2 leading-relaxed">{aiAnalysis.bestOption.reason}</p>
-                    <div className="mt-4 p-4 bg-amber-50 rounded-xl text-xs text-amber-900 border border-amber-100">
-                      <strong>تحليل المخاطر:</strong> {aiAnalysis.riskAnalysis}
-                    </div>
                   </div>
                 </Card>
               )}
@@ -415,12 +454,6 @@ export default function RequestDetailsPage() {
                     </CardContent>
                   </Card>
                 ))}
-                {(!bids || bids.length === 0) && (
-                  <div className="text-center py-16 bg-muted/10 rounded-[2.5rem] border-2 border-dashed">
-                    <Wrench className="h-12 w-12 text-muted-foreground/20 mx-auto mb-4" />
-                    <p className="text-muted-foreground">{isOwner ? 'لا توجد عروض حالياً.' : 'لم تقدم عرضاً بعد.'}</p>
-                  </div>
-                )}
               </div>
             </div>
           </div>
@@ -465,23 +498,6 @@ export default function RequestDetailsPage() {
                 </CardContent>
               </Card>
             )}
-
-            {request.status !== 'open' && (
-              <Card className="bg-muted/50 border-none rounded-3xl text-center p-8">
-                <ShieldAlert className="h-12 w-12 text-muted-foreground/30 mx-auto mb-4" />
-                <h4 className="font-bold text-lg">الطلب {request.status === 'assigned' ? 'مسند' : 'مكتمل'}</h4>
-                <p className="text-sm text-muted-foreground mt-2">لا يمكن تقديم عروض جديدة حالياً.</p>
-              </Card>
-            )}
-            
-            <Card className="rounded-2xl border-none bg-slate-900 text-white p-6 text-right space-y-3">
-               <h4 className="font-bold flex items-center gap-2 justify-end">نصائح القبول <Info className="h-4 w-4" /></h4>
-               <ul className="text-[10px] space-y-2 opacity-80">
-                  <li>• التفصيل التقني يبعث على الثقة.</li>
-                  <li>• ذكر قطع الغيار الأصلية ميزة قوية.</li>
-                  <li>• التزم بتقديم ضمان على عملك.</li>
-               </ul>
-            </Card>
           </div>
         </div>
       </div>
