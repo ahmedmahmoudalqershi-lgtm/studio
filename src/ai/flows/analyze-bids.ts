@@ -52,14 +52,14 @@ const prompt = ai.definePrompt({
 قم بتقديم مقارنة دقيقة باللغة العربية، ورشح أفضل خيار بناءً على التوازن بين السعر والمدة والتقييم.`,
 });
 
-async function runWithRetry<I, O>(fn: (input: I) => Promise<O>, input: I, retries = 2): Promise<O> {
+async function runWithRetry<O>(fn: () => Promise<O>, retries = 3): Promise<O> {
   try {
-    return await fn(input);
+    return await fn();
   } catch (error: any) {
-    const isQuotaError = error.message?.includes('429') || error.message?.includes('Quota') || error.message?.includes('RESOURCES_EXHAUSTED');
-    if (retries > 0 && isQuotaError) {
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      return runWithRetry(fn, input, retries - 1);
+    const msg = error.message || "";
+    if (retries > 0 && (msg.includes('429') || msg.includes('Quota') || msg.includes('RESOURCES_EXHAUSTED'))) {
+      await new Promise(resolve => setTimeout(resolve, (4 - retries) * 2000));
+      return runWithRetry(fn, retries - 1);
     }
     throw error;
   }
@@ -72,8 +72,11 @@ const analyzeBidsFlow = ai.defineFlow(
     outputSchema: AnalyzeBidsOutputSchema,
   },
   async input => {
-    const {output} = await runWithRetry(prompt, input);
-    return output!;
+    const response = await runWithRetry(async () => {
+      const {output} = await prompt(input);
+      return output;
+    });
+    return response!;
   }
 );
 

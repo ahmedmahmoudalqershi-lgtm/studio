@@ -59,24 +59,24 @@ const prompt = ai.definePrompt({
 });
 
 /**
- * وظيفة مساعدة للتعامل مع أخطاء Quota (429) و Resource Exhausted عبر إعادة المحاولة.
+ * وظيفة مساعدة للتعامل مع أخطاء Quota (429) و Resource Exhausted عبر إعادة المحاولة مع تأخير زمن متزايد.
  */
-async function runWithRetry<I, O>(fn: (input: I) => Promise<O>, input: I, retries = 3): Promise<O> {
+async function runWithRetry<O>(fn: () => Promise<O>, retries = 3): Promise<O> {
   try {
-    return await fn(input);
+    return await fn();
   } catch (error: any) {
-    const errorMessage = error.message || "";
+    const msg = error.message || "";
     const isRetryable = 
-      errorMessage.includes('429') || 
-      errorMessage.includes('Quota') || 
-      errorMessage.includes('RESOURCES_EXHAUSTED') ||
-      errorMessage.includes('Too Many Requests');
+      msg.includes('429') || 
+      msg.includes('Quota') || 
+      msg.includes('RESOURCES_EXHAUSTED') ||
+      msg.includes('Too Many Requests');
 
     if (retries > 0 && isRetryable) {
-      // الانتظار لفترة متزايدة قبل إعادة المحاولة (Exponential Backoff)
+      // الانتظار لفترة متزايدة قبل إعادة المحاولة (2 ثانية ثم 4 ثم 6)
       const waitTime = (4 - retries) * 2000;
       await new Promise(resolve => setTimeout(resolve, waitTime));
-      return runWithRetry(fn, input, retries - 1);
+      return runWithRetry(fn, retries - 1);
     }
     throw error;
   }
@@ -89,9 +89,11 @@ const matchEngineersFlow = ai.defineFlow(
     outputSchema: MatchEngineersOutputSchema,
   },
   async input => {
-    // استخدام runWithRetry مباشرة على استدعاء الـ prompt
-    const {output} = await runWithRetry(() => prompt(input), input);
-    return output!;
+    const response = await runWithRetry(async () => {
+      const {output} = await prompt(input);
+      return output;
+    });
+    return response!;
   }
 );
 

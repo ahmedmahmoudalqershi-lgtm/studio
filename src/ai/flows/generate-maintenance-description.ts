@@ -30,14 +30,14 @@ const prompt = ai.definePrompt({
 المشكلة المبلغ عنها: {{{reportedProblem}}}`,
 });
 
-async function runWithRetry<I, O>(fn: (input: I) => Promise<O>, input: I, retries = 3): Promise<O> {
+async function runWithRetry<O>(fn: () => Promise<O>, retries = 3): Promise<O> {
   try {
-    return await fn(input);
+    return await fn();
   } catch (error: any) {
     const msg = error.message || "";
     if (retries > 0 && (msg.includes('429') || msg.includes('Quota') || msg.includes('RESOURCES_EXHAUSTED'))) {
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      return runWithRetry(fn, input, retries - 1);
+      await new Promise(resolve => setTimeout(resolve, (4 - retries) * 2000));
+      return runWithRetry(fn, retries - 1);
     }
     throw error;
   }
@@ -50,8 +50,11 @@ const generateMaintenanceRequestDescriptionFlow = ai.defineFlow(
     outputSchema: GenerateMaintenanceRequestDescriptionOutputSchema,
   },
   async input => {
-    const {output} = await runWithRetry(() => prompt(input), input);
-    return output!;
+    const response = await runWithRetry(async () => {
+      const {output} = await prompt(input);
+      return output;
+    });
+    return response!;
   }
 );
 
