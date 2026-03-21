@@ -6,7 +6,7 @@ service cloud.firestore {
     /**
      * CORE PHILOSOPHY
      * This ruleset implements a robust, role-based security model.
-     * UPDATED: Allowed notification creation for signed-in users to enable cross-user alerts.
+     * UPDATED: Added permissions for nested chat messages.
      */
 
     // --- Helper Functions ---
@@ -81,11 +81,20 @@ service cloud.firestore {
         allow update: if isExistingOwner(resource.data.engineerId) || isDataOwner(resource.data.hospitalId) || isAdmin();
         allow delete: if isExistingOwner(resource.data.engineerId) || isAdmin();
       }
+
+      // قواعد حماية نظام الدردشة والتفاوض
+      match /chats/{engineerId} {
+        allow read, write: if isSignedIn() && (isDataOwner(engineerId) || isDataOwner(get(/databases/$(database)/documents/maintenanceRequests/$(requestId)).data.hospitalId) || isAdmin());
+        
+        match /messages/{messageId} {
+          allow read, write: if isSignedIn() && (isDataOwner(engineerId) || isDataOwner(get(/databases/$(database)/documents/maintenanceRequests/$(requestId)).data.hospitalId) || isAdmin());
+        }
+      }
     }
 
     match /users/{userId}/notifications/{notificationId} {
       allow get, list: if isOwner(userId);
-      allow create: if isSignedIn(); // Allowed so users can notify each other (e.g. engineer notifies hospital)
+      allow create: if isSignedIn(); 
       allow update: if isOwner(userId) && request.resource.data.userId == userId;
       allow delete: if isAdmin(); 
     }

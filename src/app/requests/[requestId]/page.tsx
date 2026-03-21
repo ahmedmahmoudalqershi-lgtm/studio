@@ -28,7 +28,8 @@ import {
   Timer,
   Target,
   UserCheck,
-  Send
+  Send,
+  MessageCircle
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -38,6 +39,7 @@ import { analyzeBids } from '@/ai/flows/analyze-bids';
 import { troubleshootDevice, type TroubleshootOutput } from '@/ai/flows/troubleshoot-device';
 import { generateBidDescription } from '@/ai/flows/generate-bid-description';
 import { matchEngineers } from '@/ai/flows/match-engineers';
+import { ChatSystem } from '@/components/requests/ChatSystem';
 import {
   Dialog,
   DialogContent,
@@ -69,6 +71,9 @@ export default function RequestDetailsPage() {
   const [matchedEngineers, setMatchedEngineers] = useState<any[]>([]);
   const [reviewRating, setReviewRating] = useState(5);
   const [reviewComment, setReviewComment] = useState('');
+  
+  // نظام التفاوض
+  const [activeChat, setActiveChat] = useState<{ id: string, name: string } | null>(null);
 
   const userRef = useMemoFirebase(() => {
     if (!firestore || !user) return null;
@@ -124,7 +129,8 @@ export default function RequestDetailsPage() {
         description: `تم إسناد المهمة للمهندس ${engineerName} بنجاح. سيتلقى إشعاراً للبدء فوراً.` 
       });
       
-      setMatchedEngineers([]); // Clear suggestions after hiring
+      setMatchedEngineers([]); 
+      setActiveChat(null);
     } catch (error) {
       toast({ variant: "destructive", title: "خطأ", description: "فشل إكمال عملية التوظيف." });
     } finally {
@@ -216,13 +222,6 @@ export default function RequestDetailsPage() {
     setMatchedEngineers([]); 
     try {
       const validEngineers = allEngineers.filter(e => e.id && e.fullName && e.specialization);
-
-      if (validEngineers.length === 0) {
-        toast({ title: "تنبيه", description: "لا يوجد مهندسين بملفات شخصية مكتملة حالياً." });
-        setIsMatching(false);
-        return;
-      }
-
       const result = await matchEngineers({
         requestTitle: request.title,
         requestDescription: request.description,
@@ -254,11 +253,9 @@ export default function RequestDetailsPage() {
       if (enrichedMatches.length > 0) {
         setMatchedEngineers(enrichedMatches);
         toast({ title: "تمت المطابقة", description: "تم العثور على أفضل المهندسين المناسبين لهذا الطلب." });
-      } else {
-        toast({ title: "تنبيه", description: "لم يتم العثور على مهندسين بتخصص مطابق تماماً في النظام حالياً." });
       }
     } catch (error) {
-      toast({ variant: "destructive", title: "خطأ", description: "فشل نظام المطابقة الذكي. يرجى المحاولة لاحقاً." });
+      toast({ variant: "destructive", title: "خطأ", description: "فشل نظام المطابقة الذكي." });
     } finally {
       setIsMatching(false);
     }
@@ -290,9 +287,8 @@ export default function RequestDetailsPage() {
         engineerNotes: bidDesc
       });
       setBidDesc(result.professionalDescription);
-      toast({ title: "تم توليد العرض", description: "قام المساعد الذكي بصياغة عرض تقني احترافي لك." });
     } catch (error) {
-      toast({ variant: "destructive", title: "خطأ", description: "فشل توليد العرض الذكي." });
+      toast({ variant: "destructive", title: "خطأ", description: "فشل توليد العرض." });
     } finally {
       setIsGeneratingBidAI(false);
     }
@@ -325,7 +321,7 @@ export default function RequestDetailsPage() {
   }
 
   if (requestLoading) return <Shell><div className="space-y-4 max-w-4xl mx-auto"><Skeleton className="h-12 w-64" /><Skeleton className="h-64 w-full" /></div></Shell>;
-  if (!request) return <Shell><div className="text-center py-20"><h2 className="text-2xl font-bold">الطلب غير موجود</h2><Button onClick={() => router.back()} className="mt-4">العودة</Button></div></Shell>;
+  if (!request) return <Shell><div className="text-center py-20"><h2 className="text-2xl font-bold">الطلب غير موجود</h2></div></Shell>;
 
   return (
     <Shell>
@@ -339,10 +335,7 @@ export default function RequestDetailsPage() {
               <h1 className="text-3xl font-bold font-headline">{request.title}</h1>
               <div className="flex items-center gap-2 mt-1">
                 <Badge variant={request.status === 'open' ? 'secondary' : 'default'} className="rounded-lg">
-                  {request.status === 'open' ? 'مفتوح للمزايدة' : request.status === 'assigned' ? 'قيد العمل' : 'مكتمل'}
-                </Badge>
-                <Badge variant="outline" className="border-primary/20 text-primary">
-                  {request.urgency === 'critical' ? 'حرج فوري' : request.urgency === 'high' ? 'عاجل' : 'عادي'}
+                  {request.status === 'open' ? 'مفتوح للتفاوض' : request.status === 'assigned' ? 'قيد العمل' : 'مكتمل'}
                 </Badge>
               </div>
             </div>
@@ -350,78 +343,68 @@ export default function RequestDetailsPage() {
           
           <div className="flex gap-2">
             {(isOwner || isAdmin) && request.status === 'open' && (
-              <>
-                <Button variant="outline" onClick={handleSmartMatch} disabled={isMatching} className="gap-2 border-emerald-500 text-emerald-600 rounded-xl hover:bg-emerald-50 shadow-sm">
-                  {isMatching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Target className="h-4 w-4" />}
-                  مطابقة المهندسين
-                </Button>
-                <Button variant="outline" onClick={handleTroubleshoot} disabled={isTroubleshooting} className="gap-2 border-primary/50 text-primary rounded-xl shadow-sm">
-                  {isTroubleshooting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-                  استكشاف الأعطال
-                </Button>
-              </>
+              <Button variant="outline" onClick={handleSmartMatch} disabled={isMatching} className="gap-2 border-emerald-500 text-emerald-600 rounded-xl">
+                {isMatching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Target className="h-4 w-4" />}
+                مطابقة واقتراح مهندسين
+              </Button>
             )}
             {isOwner && request.status === 'assigned' && (
-              <Dialog>
-                <DialogTrigger asChild>
-                  <Button className="bg-green-600 hover:bg-green-700 gap-2 rounded-xl shadow-lg">
-                    <CheckCircle2 className="h-4 w-4" /> إتمام وتقييم المهمة
-                  </Button>
-                </DialogTrigger>
-                <DialogContent dir="rtl" className="rounded-3xl">
-                  <DialogHeader><DialogTitle className="text-xl">تقييم جودة الصيانة</DialogTitle></DialogHeader>
-                  <div className="space-y-6 py-4">
-                    <p className="text-center text-muted-foreground text-sm">كيف تقيم أداء المهندس في هذه العملية؟</p>
-                    <div className="flex justify-center gap-2">
-                      {[1, 2, 3, 4, 5].map(s => (
-                        <Star key={s} className={`h-10 w-10 cursor-pointer transition-all ${reviewRating >= s ? "text-yellow-500 fill-yellow-500 scale-110" : "text-muted hover:text-yellow-200"}`} onClick={() => setReviewRating(s)} />
-                      ))}
-                    </div>
-                    <div className="space-y-2 text-right">
-                      <Label className="font-bold">ملاحظات إضافية</Label>
-                      <Textarea placeholder="اكتب رأيك في عمل المهندس..." value={reviewComment} onChange={(e) => setReviewComment(e.target.value)} className="rounded-xl min-h-[100px]" />
-                    </div>
-                  </div>
-                  <DialogFooter><Button onClick={handleCompleteJob} className="w-full h-12 rounded-xl font-bold">حفظ وإغلاق الطلب</Button></DialogFooter>
-                </DialogContent>
-              </Dialog>
+              <Button onClick={handleCompleteJob} className="bg-green-600 hover:bg-green-700 gap-2 rounded-xl">
+                <CheckCircle2 className="h-4 w-4" /> إتمام وتقييم المهمة
+              </Button>
             )}
           </div>
         </div>
 
+        {activeChat && (
+          <div className="fixed bottom-24 left-6 z-50 w-full max-w-md">
+            <ChatSystem 
+              requestId={requestId as string}
+              engineerId={activeChat.id}
+              engineerName={activeChat.name}
+              onClose={() => setActiveChat(null)}
+            />
+          </div>
+        )}
+
         {matchedEngineers.length > 0 && (isOwner || isAdmin) && (
-          <div className="bg-emerald-50/50 p-8 rounded-[3rem] border-2 border-emerald-100 space-y-6 animate-in fade-in slide-in-from-top-4 shadow-inner">
-            <div className="flex items-center gap-3 justify-end text-emerald-800">
-              <div className="text-right">
-                <h2 className="text-2xl font-black">المهندسون الأنسب لطلبك</h2>
-                <p className="text-xs opacity-70">تم اختيارهم بناءً على التحليل الفني العميق للذكاء الاصطناعي.</p>
+          <div className="bg-emerald-50/50 p-8 rounded-[3rem] border-2 border-emerald-100 space-y-6">
+            <div className="flex items-center gap-3 justify-end text-emerald-800 text-right">
+              <div>
+                <h2 className="text-2xl font-black">أفضل المهندسين المناسبين</h2>
+                <p className="text-xs opacity-70">ابدأ التفاوض معهم للوصول لأفضل اتفاق قبل التوظيف.</p>
               </div>
-              <div className="bg-emerald-100 p-3 rounded-2xl"><Target className="h-6 w-6" /></div>
+              <div className="bg-emerald-100 p-3 rounded-2xl"><Sparkles className="h-6 w-6" /></div>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
               {matchedEngineers.map((eng) => (
-                <Card key={eng.id} className="border-none shadow-2xl rounded-[2.5rem] bg-white overflow-hidden hover:scale-[1.03] transition-all flex flex-col">
+                <Card key={eng.id} className="border-none shadow-2xl rounded-[2.5rem] bg-white overflow-hidden flex flex-col">
                   <CardContent className="p-6 text-right flex-1 flex flex-col">
-                    <div className="flex justify-between items-start mb-4">
-                      <Badge className="bg-emerald-500 px-4 py-1.5 font-black text-xs rounded-full shadow-lg shadow-emerald-500/20">{eng.matchScore}% مطابقة</Badge>
-                      <div className="bg-emerald-50 p-2 rounded-xl"><UserCheck className="h-6 w-6 text-emerald-600" /></div>
-                    </div>
+                    <Badge className="bg-emerald-500 px-4 py-1.5 font-black text-xs rounded-full w-fit mb-4">{eng.matchScore}% مطابقة</Badge>
                     <p className="font-black text-xl text-emerald-900">م. {eng.fullName}</p>
-                    <p className="text-xs text-muted-foreground mt-1 font-bold">{eng.specialization}</p>
-                    <div className="flex gap-1 text-yellow-500 mt-2 justify-end mb-4">
-                      {[1,2,3,4,5].map(s => <Star key={s} className={`h-3.5 w-3.5 ${eng.rating >= s ? "fill-current" : ""}`} />)}
-                    </div>
+                    <p className="text-xs text-muted-foreground mt-1 mb-4">{eng.specialization}</p>
+                    
                     <div className="bg-emerald-50/50 p-4 rounded-2xl border border-emerald-100 mb-6 flex-1">
-                      <p className="text-xs text-emerald-800 font-medium leading-relaxed italic">"{eng.reason}"</p>
+                      <p className="text-xs text-emerald-800 italic leading-relaxed">"{eng.reason}"</p>
                     </div>
-                    <Button 
-                      onClick={() => handleHireEngineer(eng.id, eng.fullName)}
-                      disabled={isHiring !== null}
-                      className="w-full h-12 rounded-xl bg-emerald-600 hover:bg-emerald-700 font-bold gap-2 shadow-xl shadow-emerald-600/20"
-                    >
-                      {isHiring === eng.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                      اختيار وتوظيف هذا المهندس
-                    </Button>
+
+                    <div className="flex flex-col gap-2 mt-auto">
+                      <Button 
+                        variant="outline"
+                        onClick={() => setActiveChat({ id: eng.id, name: eng.fullName })}
+                        className="w-full h-11 rounded-xl border-emerald-200 text-emerald-700 hover:bg-emerald-100 gap-2 font-bold"
+                      >
+                        <MessageCircle className="h-4 w-4" /> بدء تفاوض دردشة
+                      </Button>
+                      <Button 
+                        onClick={() => handleHireEngineer(eng.id, eng.fullName)}
+                        disabled={isHiring !== null}
+                        className="w-full h-11 rounded-xl bg-emerald-600 hover:bg-emerald-700 font-bold gap-2"
+                      >
+                        {isHiring === eng.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserCheck className="h-4 w-4" />}
+                        توظيف مباشر
+                      </Button>
+                    </div>
                   </CardContent>
                 </Card>
               ))}
@@ -429,38 +412,11 @@ export default function RequestDetailsPage() {
           </div>
         )}
 
-        {troubleshootResult && (
-          <Card className="bg-blue-50 border-blue-200 rounded-[2.5rem] overflow-hidden shadow-lg border-2">
-            <CardHeader className="bg-blue-100/50 pb-2 text-right">
-              <CardTitle className="text-lg flex items-center gap-2 text-blue-800 justify-end">
-                <span>مساعد التشخيص الذكي</span>
-                <Sparkles className="h-5 w-5" />
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-6 space-y-4 text-right">
-              <div className="bg-white p-5 rounded-2xl border border-blue-100 shadow-sm">
-                <p className="font-bold text-blue-900 mb-2">السبب المحتمل: {troubleshootResult.potentialCause}</p>
-                <div className="space-y-3">
-                  <p className="text-sm font-medium text-blue-800">خطوات مقترحة:</p>
-                  <ul className="space-y-2 text-sm pr-0">
-                    {troubleshootResult.steps.map((s, i) => (
-                      <li key={i} className="flex items-start gap-2 justify-end">
-                        <span>{s}</span>
-                        <span className="bg-blue-200 text-blue-800 w-5 h-5 rounded-full flex items-center justify-center text-[10px] shrink-0">{i+1}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 space-y-6">
             <Card className="border-none shadow-xl rounded-3xl overflow-hidden bg-white">
               <CardHeader className="bg-muted/30 border-b text-right">
-                <CardTitle className="text-xl font-bold">وصف العطل</CardTitle>
+                <CardTitle className="text-xl font-bold">وصف العطل الطبي</CardTitle>
               </CardHeader>
               <CardContent className="p-8 text-right">
                 <p className="text-muted-foreground whitespace-pre-wrap leading-relaxed text-lg">{request.description}</p>
@@ -468,130 +424,62 @@ export default function RequestDetailsPage() {
             </Card>
 
             <div className="space-y-4 text-right">
-              <div className="flex items-center justify-between flex-row-reverse">
-                <h2 className="text-2xl font-black">{isOwner || isAdmin ? `عروض المهندسين (${bids?.length || 0})` : 'عروضك لهذا الطلب'}</h2>
-                {isOwner && bids && bids.length > 0 && (
-                  <Button onClick={handleAnalyzeBids} disabled={isAnalyzing} variant="outline" className="gap-2 border-primary/20 text-primary rounded-xl">
-                    {isAnalyzing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-                    تحليل العروض ذكياً
-                  </Button>
-                )}
-              </div>
-
-              {isOwner && aiAnalysis && (
-                <Card className="bg-primary/5 border-primary/20 p-6 rounded-3xl shadow-lg border-2 text-right">
-                  <p className="font-bold text-primary flex items-center gap-2 justify-end mb-4"><span>التوصية الذكية للاختيار:</span> <Sparkles className="h-4 w-4" /></p>
-                  <div className="bg-white p-6 rounded-2xl shadow-sm border border-primary/10">
-                    <p className="font-black text-xl text-primary">{aiAnalysis.bestOption.engineerName}</p>
-                    <p className="text-sm text-muted-foreground mt-2 leading-relaxed">{aiAnalysis.bestOption.reason}</p>
-                  </div>
-                </Card>
-              )}
-
+              <h2 className="text-2xl font-black">عروض الصيانة المقدمة</h2>
               <div className="space-y-4">
                 {bids?.map(bid => (
                   <Card key={bid.id} className="hover:shadow-xl transition-all overflow-hidden border-none shadow-md rounded-3xl bg-white">
                     <CardContent className="p-6">
                       <div className="flex flex-col sm:flex-row gap-6">
                         <div className="flex-1 text-right order-1 sm:order-2">
-                          <div className="flex items-center gap-3 mb-3 justify-end">
-                            <div>
-                              <p className="font-bold text-lg">مهندس صيانة متخصص</p>
-                              <div className="flex items-center gap-1 justify-end text-yellow-500">
-                                <Star className="h-3 w-3 fill-current" />
-                                <Star className="h-3 w-3 fill-current" />
-                                <Star className="h-3 w-3 fill-current" />
-                                <Star className="h-3 w-3 fill-current" />
-                                <Star className="h-3 w-3 fill-current" />
-                              </div>
-                            </div>
-                            <div className="bg-primary/10 p-3 rounded-2xl">
-                              <User className="h-6 w-6 text-primary" />
-                            </div>
-                          </div>
+                          <p className="font-bold text-lg mb-2">مهندس متخصص</p>
                           <p className="text-sm text-muted-foreground leading-relaxed bg-muted/20 p-4 rounded-2xl">{bid.description}</p>
                           <div className="mt-4 flex items-center gap-4 justify-end">
-                             <Badge variant="outline" className="text-primary font-black text-lg px-4">{bid.price} ر.س</Badge>
-                             <Badge variant="outline" className="text-muted-foreground">{bid.estimatedDays} أيام</Badge>
+                             <Badge variant="outline" className="text-primary font-black px-4">{bid.price} ر.س</Badge>
+                             <Button 
+                               variant="ghost" 
+                               size="sm" 
+                               className="gap-2 text-primary"
+                               onClick={() => setActiveChat({ id: bid.engineerId, name: 'مقدم العرض' })}
+                             >
+                               <MessageCircle className="h-4 w-4" /> تفاوض بالدردشة
+                             </Button>
                           </div>
                         </div>
                         {isOwner && request.status === 'open' && (
-                          <div className="flex items-center justify-center sm:w-40 order-2 sm:order-1 border-t sm:border-t-0 sm:border-l pt-4 sm:pt-0 sm:pl-4">
-                            <Button className="w-full rounded-xl font-bold h-11" onClick={() => handleAcceptBid(bid)}>قبول هذا العرض</Button>
-                          </div>
-                        )}
-                        {bid.status === 'accepted' && (
-                          <div className="flex items-center justify-center sm:w-40 order-2 sm:order-1 text-green-600 font-bold bg-green-50 rounded-xl p-2 border border-green-100">
-                            تم القبول والتعاقد
+                          <div className="flex items-center justify-center sm:w-40 order-2 sm:order-1 pt-4 sm:pt-0 sm:pl-4 border-t sm:border-t-0 sm:border-l">
+                            <Button className="w-full rounded-xl font-bold h-11" onClick={() => handleAcceptBid(bid)}>قبول العرض</Button>
                           </div>
                         )}
                       </div>
                     </CardContent>
                   </Card>
                 ))}
-                {(!bids || bids.length === 0) && (
-                  <div className="text-center py-16 bg-muted/10 rounded-3xl border-2 border-dashed">
-                    <Clock className="h-10 w-10 text-muted-foreground/20 mx-auto mb-3" />
-                    <p className="text-muted-foreground italic">في انتظار وصول عروض من المهندسين المتاحين...</p>
-                  </div>
-                )}
               </div>
             </div>
           </div>
 
           <div className="space-y-6">
             {!isOwner && !isAdmin && request.status === 'open' && (
-              <Card className="shadow-2xl border-t-4 border-t-primary rounded-3xl sticky top-24 bg-white">
+              <Card className="shadow-2xl border-t-4 border-t-primary rounded-3xl sticky top-24">
                 <CardHeader className="text-right">
                   <CardTitle className="text-2xl font-black">تقديم عرض صيانة</CardTitle>
-                  <CardDescription>قدم عرضك الفني والمالي بدقة.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4 text-right">
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label className="font-bold flex justify-end">التكلفة (ر.س) <DollarSign className="h-3 w-3 mr-1" /></Label>
+                      <Label className="font-bold flex justify-end">التكلفة (ر.س)</Label>
                       <Input type="number" value={bidPrice} onChange={(e) => setBidPrice(e.target.value)} className="h-12 rounded-xl text-center font-bold" />
                     </div>
                     <div className="space-y-2">
-                      <Label className="font-bold flex justify-end">المدة (أيام) <Timer className="h-3 w-3 mr-1" /></Label>
+                      <Label className="font-bold flex justify-end">المدة (أيام)</Label>
                       <Input type="number" value={bidDays} onChange={(e) => setBidDays(e.target.value)} className="h-12 rounded-xl text-center font-bold" />
                     </div>
                   </div>
-                  
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between mb-1">
-                      <Button variant="outline" size="sm" onClick={handleGenerateAIBid} disabled={isGeneratingBidAI} className="text-primary h-8 rounded-lg gap-1 border-primary/30 shadow-sm">
-                        {isGeneratingBidAI ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
-                        صياغة تقنية ذكية
-                      </Button>
-                      <Label className="font-bold">خطة الإصلاح</Label>
-                    </div>
-                    <Textarea 
-                      placeholder="اشرح كيف ستقوم بحل المشكلة التقنية..." 
-                      value={bidDesc} 
-                      onChange={(e) => setBidDesc(e.target.value)} 
-                      className="min-h-[180px] rounded-xl text-right leading-relaxed" 
-                    />
-                  </div>
-
-                  <Button className="w-full h-14 text-lg font-bold rounded-xl mt-2 shadow-xl shadow-primary/20" onClick={handleSendBid} disabled={isSubmittingBid || !bidPrice || !bidDays}>
-                    {isSubmittingBid ? <Loader2 className="h-5 w-5 animate-spin" /> : 'إرسال العرض للمستشفى'}
+                  <Textarea placeholder="اشرح خطة الإصلاح الفنية..." value={bidDesc} onChange={(e) => setBidDesc(e.target.value)} className="min-h-[150px] rounded-xl text-right" />
+                  <Button className="w-full h-14 text-lg font-bold rounded-xl shadow-xl shadow-primary/20" onClick={handleSendBid} disabled={isSubmittingBid || !bidPrice}>
+                    {isSubmittingBid ? <Loader2 className="h-5 w-5 animate-spin" /> : 'إرسال العرض'}
                   </Button>
                 </CardContent>
-              </Card>
-            )}
-            
-            {(isOwner || isAdmin) && request.status === 'assigned' && (
-              <Card className="border-none shadow-xl rounded-3xl bg-primary/5 p-6 space-y-4">
-                <div className="flex items-center gap-3 justify-end text-primary">
-                  <h3 className="font-black text-lg">المهندس المكلف</h3>
-                  <div className="bg-primary/10 p-2 rounded-xl"><Wrench className="h-5 w-5" /></div>
-                </div>
-                <div className="bg-white p-4 rounded-2xl border border-primary/10 shadow-sm">
-                  <p className="font-bold text-center text-primary">م. أحمد علي (مثال)</p>
-                  <p className="text-[10px] text-center text-muted-foreground mt-1">جاري التواصل وبدء عملية الصيانة</p>
-                </div>
-                <p className="text-[10px] text-muted-foreground text-center">يمكنك متابعة حالة الصيانة أو إغلاق الطلب بعد الانتهاء.</p>
               </Card>
             )}
           </div>
