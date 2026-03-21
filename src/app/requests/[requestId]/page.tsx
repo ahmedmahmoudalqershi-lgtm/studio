@@ -26,7 +26,8 @@ import {
   Info,
   DollarSign,
   Timer,
-  Target
+  Target,
+  UserCheck
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -178,6 +179,7 @@ export default function RequestDetailsPage() {
       return;
     }
     setIsMatching(true);
+    setMatchedEngineers([]); // Reset previous matches
     try {
       // Filter engineers to ensure they meet the Zod schema requirements
       const validEngineers = allEngineers.filter(e => 
@@ -214,11 +216,15 @@ export default function RequestDetailsPage() {
         })
         .filter(m => m !== null);
 
-      setMatchedEngineers(enrichedMatches);
-      toast({ title: "تمت المطابقة", description: "تم العثور على أفضل المهندسين المناسبين لهذا الطلب." });
+      if (enrichedMatches.length > 0) {
+        setMatchedEngineers(enrichedMatches);
+        toast({ title: "تمت المطابقة", description: "تم العثور على أفضل المهندسين المناسبين لهذا الطلب." });
+      } else {
+        toast({ title: "تنبيه", description: "لم يتم العثور على مطابقات دقيقة لهذا الطلب حالياً." });
+      }
     } catch (error) {
       console.error("Match error:", error);
-      toast({ variant: "destructive", title: "خطأ", description: "فشل نظام المطابقة. يرجى التأكد من إعدادات مفتاح الـ API والمهلة." });
+      toast({ variant: "destructive", title: "خطأ", description: "فشل نظام المطابقة الذكي. يرجى المحاولة لاحقاً." });
     } finally {
       setIsMatching(false);
     }
@@ -309,7 +315,7 @@ export default function RequestDetailsPage() {
           </div>
           
           <div className="flex gap-2">
-            {isOwner && request.status === 'open' && (
+            {(isOwner || isAdmin) && request.status === 'open' && (
               <>
                 <Button variant="outline" onClick={handleSmartMatch} disabled={isMatching} className="gap-2 border-emerald-500 text-emerald-600 rounded-xl hover:bg-emerald-50">
                   {isMatching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Target className="h-4 w-4" />}
@@ -349,26 +355,28 @@ export default function RequestDetailsPage() {
           </div>
         </div>
 
-        {matchedEngineers.length > 0 && isOwner && (
+        {matchedEngineers.length > 0 && (isOwner || isAdmin) && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 animate-in fade-in slide-in-from-top-4">
             <div className="col-span-full flex items-center gap-2 text-emerald-700 font-black mb-2 justify-end">
               <span>المهندسون الأكثر مطابقة لهذا الطلب (AI Recommendation)</span>
               <Target className="h-5 w-5" />
             </div>
-            {matchedEngineers.map((eng, idx) => (
+            {matchedEngineers.map((eng) => (
               <Card key={eng.id} className="border-2 border-emerald-100 bg-emerald-50/30 rounded-3xl overflow-hidden hover:border-emerald-500 transition-all group">
                 <CardContent className="p-4 text-right relative">
                   <Badge className="absolute top-2 left-2 bg-emerald-500 font-bold">{eng.matchScore}% مطابقة</Badge>
                   <div className="flex flex-col items-center gap-2 mt-4">
                     <div className="bg-emerald-100 p-3 rounded-full">
-                      <User className="h-6 w-6 text-emerald-700" />
+                      <UserCheck className="h-6 w-6 text-emerald-700" />
                     </div>
                     <p className="font-black text-emerald-900">{eng.fullName}</p>
                     <p className="text-[10px] text-muted-foreground">{eng.specialization}</p>
                     <div className="flex gap-1 text-yellow-500">
                       {[1,2,3,4,5].map(s => <Star key={s} className={`h-3 w-3 ${eng.rating >= s ? "fill-current" : ""}`} />)}
                     </div>
-                    <p className="text-[10px] text-emerald-800 font-medium text-center mt-2 line-clamp-2">"{eng.reason}"</p>
+                    <div className="mt-2 bg-white/50 p-3 rounded-xl border border-emerald-100 w-full">
+                      <p className="text-[10px] text-emerald-800 font-medium text-center leading-relaxed italic">"{eng.reason}"</p>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
