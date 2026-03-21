@@ -24,24 +24,18 @@ const prompt = ai.definePrompt({
   output: {schema: GenerateMaintenanceRequestDescriptionOutputSchema},
   prompt: `أنت مساعد ذكاء اصطناعي متخصص في صيانة الأجهزة الطبية. مهمتك هي مساعدة موظفي المستشفى في صياغة وصف تقني دقيق واحترافي لطلب صيانة.
 
-بناءً على المعلومات البسيطة التالية، قم بتوليد وصف مفصل باللغة العربية يتضمن:
-- صياغة واضحة للمشكلة التقنية.
-- الأعراض الظاهرة أو أكواد الخطأ (إن وجدت).
-- تأثير المشكلة على سير العمل في المستشفى.
-- أي تفاصيل فنية تساعد المهندس في التشخيص السريع والدقيق.
+بناءً على المعلومات البسيطة التالية، قم بتوليد وصف مفصل باللغة العربية يتضمن صياغة واضحة للمشكلة وتأثيرها وأي تفاصيل فنية تساعد المهندس.
 
 اسم الجهاز: {{{deviceName}}}
-المشكلة المبلغ عنها: {{{reportedProblem}}}
-
-يجب أن يكون النص النهائي احترافياً وموجهاً لمهندس صيانة متخصص.`,
+المشكلة المبلغ عنها: {{{reportedProblem}}}`,
 });
 
-async function runWithRetry<I, O>(fn: (input: I) => Promise<O>, input: I, retries = 2): Promise<O> {
+async function runWithRetry<I, O>(fn: (input: I) => Promise<O>, input: I, retries = 3): Promise<O> {
   try {
     return await fn(input);
   } catch (error: any) {
-    const isQuotaError = error.message?.includes('429') || error.message?.includes('Quota') || error.message?.includes('RESOURCES_EXHAUSTED');
-    if (retries > 0 && isQuotaError) {
+    const msg = error.message || "";
+    if (retries > 0 && (msg.includes('429') || msg.includes('Quota') || msg.includes('RESOURCES_EXHAUSTED'))) {
       await new Promise(resolve => setTimeout(resolve, 2000));
       return runWithRetry(fn, input, retries - 1);
     }
@@ -56,7 +50,7 @@ const generateMaintenanceRequestDescriptionFlow = ai.defineFlow(
     outputSchema: GenerateMaintenanceRequestDescriptionOutputSchema,
   },
   async input => {
-    const {output} = await runWithRetry(prompt, input);
+    const {output} = await runWithRetry(() => prompt(input), input);
     return output!;
   }
 );

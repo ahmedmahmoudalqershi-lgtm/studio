@@ -4,6 +4,6 @@ import {googleAI} from '@genkit-ai/google-genai';
 
 export const ai = genkit({
   plugins: [googleAI()],
-  // استخدام الموديل المستقر gemini-1.5-flash لضمان أفضل أداء وحصة طلبات في النسخة المجانية
+  // استخدام المسمى الكامل للموديل لضمان التوافق مع API v1beta وتجنب أخطاء 404
   model: 'googleai/gemini-1.5-flash',
 });

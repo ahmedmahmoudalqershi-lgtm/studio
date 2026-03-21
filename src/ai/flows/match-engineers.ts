@@ -2,7 +2,7 @@
 'use server';
 /**
  * @fileOverview محرك المطابقة الذكي لربط طلبات الصيانة بالمهندسين الأكثر كفاءة.
- * تم تحسينه بنظام محاولة تلقائية (Retry) لضمان العمل حتى عند ضغط الطلبات.
+ * تم تحسينه بنظام محاولة تلقائية (Retry) متطور للتعامل مع حدود الحصة المجانية (Quota).
  */
 
 import {ai} from '@/ai/genkit';
@@ -51,23 +51,31 @@ const prompt = ai.definePrompt({
 {{/each}}
 
 قواعد المطابقة المنطقية:
-1. المطابقة الدلالية الشاملة: ابحث عن التوافق التقني (مثلاً: إذا كان الطلب يتضمن كلمة "أشعة" أو "MRI" أو "X-Ray" والمهندس تخصصه "أشعة"، فهذه مطابقة ممتازة).
-2. لا تكن متشدداً جداً: إذا كان التخصص قريباً أو يقع ضمن نفس المجال الطبي، قم بترشيح المهندس واذكر السبب.
-3. الخبرة النوعية: فضل المهندس الذي يملك سنوات خبرة أكثر في نفس المجال التقني للطلب.
-4. التقييم والإنجاز: فضل المهندسين ذوي التقييمات العالية.
+1. المطابقة الدلالية الشاملة: ابحث عن التوافق التقني (مثلاً: إذا كان الطلب يتضمن كلمة "أشعة" أو "MRI" والمهندس تخصصه "أشعة"، فهذه مطابقة ممتازة).
+2. المطابقة عبر التخصصات القريبة: إذا كان التخصص قريباً أو يقع ضمن نفس المجال الطبي، قم بترشيح المهندس واذكر السبب.
+3. الخبرة والتقييم: فضل المهندسين ذوي الخبرة العالية والتقييمات المتميزة.
 
-يجب أن تعيد قائمة بأفضل 3 مهندسين (أو أقل إذا كان العدد المتاح صغيراً) مع ذكر سبب "تقني ومنطقي" باللغة العربية.`,
+يجب أن تعيد قائمة بأفضل 3 مهندسين مع ذكر سبب "تقني ومنطقي" باللغة العربية لكل مرشح.`,
 });
 
-// وظيفة مساعدة للتعامل مع أخطاء Quota (429) عبر إعادة المحاولة
-async function runWithRetry<I, O>(fn: (input: I) => Promise<O>, input: I, retries = 2): Promise<O> {
+/**
+ * وظيفة مساعدة للتعامل مع أخطاء Quota (429) و Resource Exhausted عبر إعادة المحاولة.
+ */
+async function runWithRetry<I, O>(fn: (input: I) => Promise<O>, input: I, retries = 3): Promise<O> {
   try {
     return await fn(input);
   } catch (error: any) {
-    const isQuotaError = error.message?.includes('429') || error.message?.includes('Quota') || error.message?.includes('RESOURCES_EXHAUSTED');
-    if (retries > 0 && isQuotaError) {
-      console.log('Quota hit, retrying in 2 seconds...');
-      await new Promise(resolve => setTimeout(resolve, 2000));
+    const errorMessage = error.message || "";
+    const isRetryable = 
+      errorMessage.includes('429') || 
+      errorMessage.includes('Quota') || 
+      errorMessage.includes('RESOURCES_EXHAUSTED') ||
+      errorMessage.includes('Too Many Requests');
+
+    if (retries > 0 && isRetryable) {
+      // الانتظار لفترة متزايدة قبل إعادة المحاولة (Exponential Backoff)
+      const waitTime = (4 - retries) * 2000;
+      await new Promise(resolve => setTimeout(resolve, waitTime));
       return runWithRetry(fn, input, retries - 1);
     }
     throw error;
@@ -81,7 +89,8 @@ const matchEngineersFlow = ai.defineFlow(
     outputSchema: MatchEngineersOutputSchema,
   },
   async input => {
-    const {output} = await runWithRetry(prompt, input);
+    // استخدام runWithRetry مباشرة على استدعاء الـ prompt
+    const {output} = await runWithRetry(() => prompt(input), input);
     return output!;
   }
 );
