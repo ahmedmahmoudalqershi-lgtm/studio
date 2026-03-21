@@ -1,8 +1,6 @@
 'use server';
 /**
  * @fileOverview يساعد المهندسين في صياغة عروض صيانة احترافية ومقنعة باستخدام الذكاء الاصطناعي باللغة العربية.
- *
- * - generateBidDescription - وظيفة تولد وصفاً تقنياً للعرض.
  */
 
 import {ai} from '@/ai/genkit';
@@ -22,6 +20,7 @@ export type GenerateBidDescriptionOutput = z.infer<typeof GenerateBidDescription
 
 const prompt = ai.definePrompt({
   name: 'generateBidDescriptionPrompt',
+  model: 'googleai/gemini-1.5-flash',
   input: {schema: GenerateBidDescriptionInputSchema},
   output: {schema: GenerateBidDescriptionOutputSchema},
   prompt: `أنت مهندس صيانة أجهزة طبية خبير ومحترف في كتابة العروض التقنية. مهمتك هي مساعدة المهندس في صياغة "وصف العرض" لطلب صيانة محدد بطريقة تقنية، مقنعة، ومنطقية.
@@ -41,6 +40,19 @@ const prompt = ai.definePrompt({
 اجعل النص احترافياً جداً، يبعث على الثقة لمسؤولي المستشفى، ويركز على الجودة التقنية قبل كل شيء. لا تكتفِ بذكر السعر، بل اشرح "كيف" ستقوم بالعمل.`,
 });
 
+async function runWithRetry<O>(fn: () => Promise<O>, retries = 3): Promise<O> {
+  try {
+    return await fn();
+  } catch (error: any) {
+    const msg = error.message || "";
+    if (retries > 0 && (msg.includes('429') || msg.includes('Quota') || msg.includes('RESOURCES_EXHAUSTED'))) {
+      await new Promise(resolve => setTimeout(resolve, (4 - retries) * 2000));
+      return runWithRetry(fn, retries - 1);
+    }
+    throw error;
+  }
+}
+
 const generateBidDescriptionFlow = ai.defineFlow(
   {
     name: 'generateBidDescriptionFlow',
@@ -48,8 +60,10 @@ const generateBidDescriptionFlow = ai.defineFlow(
     outputSchema: GenerateBidDescriptionOutputSchema,
   },
   async input => {
-    const {output} = await prompt(input);
-    return output!;
+    return await runWithRetry(async () => {
+      const {output} = await prompt(input);
+      return output!;
+    });
   }
 );
 

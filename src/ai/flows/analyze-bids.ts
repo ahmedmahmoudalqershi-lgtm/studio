@@ -1,4 +1,3 @@
-
 'use server';
 /**
  * @fileOverview يقوم هذا الملف بتحليل ومقارنة عروض المهندسين لمساعدة المستشفيات في اختيار العرض الأنسب.
@@ -34,6 +33,7 @@ export type AnalyzeBidsOutput = z.infer<typeof AnalyzeBidsOutputSchema>;
 
 const prompt = ai.definePrompt({
   name: 'analyzeBidsPrompt',
+  model: 'googleai/gemini-1.5-flash',
   input: {schema: AnalyzeBidsInputSchema},
   output: {schema: AnalyzeBidsOutputSchema},
   prompt: `أنت مستشار ذكي لإدارة المستشفيات. مهمتك هي تحليل ومقارنة عدة عروض مقدمة من مهندسي الصيانة لطلب محدد.
@@ -72,11 +72,10 @@ const analyzeBidsFlow = ai.defineFlow(
     outputSchema: AnalyzeBidsOutputSchema,
   },
   async input => {
-    const response = await runWithRetry(async () => {
+    return await runWithRetry(async () => {
       const {output} = await prompt(input);
-      return output;
+      return output!;
     });
-    return response!;
   }
 );
 

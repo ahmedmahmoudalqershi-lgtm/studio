@@ -1,4 +1,3 @@
-
 'use server';
 /**
  * @fileOverview يساعد هذا الملف مستخدمي المستشفيات في صياغة أوصاف دقيقة لطلبات الصيانة باستخدام الذكاء الاصطناعي باللغة العربية.
@@ -20,6 +19,7 @@ export type GenerateMaintenanceRequestDescriptionOutput = z.infer<typeof Generat
 
 const prompt = ai.definePrompt({
   name: 'generateMaintenanceDescriptionPrompt',
+  model: 'googleai/gemini-1.5-flash',
   input: {schema: GenerateMaintenanceRequestDescriptionInputSchema},
   output: {schema: GenerateMaintenanceRequestDescriptionOutputSchema},
   prompt: `أنت مساعد ذكاء اصطناعي متخصص في صيانة الأجهزة الطبية. مهمتك هي مساعدة موظفي المستشفى في صياغة وصف تقني دقيق واحترافي لطلب صيانة.
@@ -50,11 +50,10 @@ const generateMaintenanceRequestDescriptionFlow = ai.defineFlow(
     outputSchema: GenerateMaintenanceRequestDescriptionOutputSchema,
   },
   async input => {
-    const response = await runWithRetry(async () => {
+    return await runWithRetry(async () => {
       const {output} = await prompt(input);
-      return output;
+      return output!;
     });
-    return response!;
   }
 );
 

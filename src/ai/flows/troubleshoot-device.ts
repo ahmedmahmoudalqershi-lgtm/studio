@@ -1,8 +1,6 @@
 'use server';
 /**
  * @fileOverview ذكاء اصطناعي لاستكشاف الأعطال الطبية البسيطة وتوفير حلول فورية.
- *
- * - troubleshootDevice - وظيفة توفر نصائح تقنية فورية بناءً على نوع الجهاز والعطل.
  */
 
 import {ai} from '@/ai/genkit';
@@ -24,6 +22,7 @@ export type TroubleshootOutput = z.infer<typeof TroubleshootOutputSchema>;
 
 const prompt = ai.definePrompt({
   name: 'troubleshootDevicePrompt',
+  model: 'googleai/gemini-1.5-flash',
   input: {schema: TroubleshootInputSchema},
   output: {schema: TroubleshootOutputSchema},
   prompt: `أنت خبير صيانة أجهزة طبية محترف. 
@@ -35,6 +34,19 @@ const prompt = ai.definePrompt({
 يجب أن تكون الخطوات واضحة، آمنة، وتقنية. إذا كانت المشكلة تتضمن كهرباء عالية أو أجزاء حساسة، شدد على أهمية عدم المحاولة وطلب المهندس فوراً.`,
 });
 
+async function runWithRetry<O>(fn: () => Promise<O>, retries = 3): Promise<O> {
+  try {
+    return await fn();
+  } catch (error: any) {
+    const msg = error.message || "";
+    if (retries > 0 && (msg.includes('429') || msg.includes('Quota') || msg.includes('RESOURCES_EXHAUSTED'))) {
+      await new Promise(resolve => setTimeout(resolve, (4 - retries) * 2000));
+      return runWithRetry(fn, retries - 1);
+    }
+    throw error;
+  }
+}
+
 const troubleshootFlow = ai.defineFlow(
   {
     name: 'troubleshootFlow',
@@ -42,8 +54,10 @@ const troubleshootFlow = ai.defineFlow(
     outputSchema: TroubleshootOutputSchema,
   },
   async input => {
-    const {output} = await prompt(input);
-    return output!;
+    return await runWithRetry(async () => {
+      const {output} = await prompt(input);
+      return output!;
+    });
   }
 );
 

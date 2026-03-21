@@ -1,8 +1,7 @@
-
 'use server';
 /**
  * @fileOverview محرك المطابقة الذكي لربط طلبات الصيانة بالمهندسين الأكثر كفاءة.
- * تم تحسينه بنظام محاولة تلقائية (Retry) متطور للتعامل مع حدود الحصة المجانية (Quota).
+ * تم تحسينه بنظام محاولة تلقائية (Retry) متطور للتعامل مع حدود الحصة (Quota) وأخطاء الموديلات.
  */
 
 import {ai} from '@/ai/genkit';
@@ -37,6 +36,7 @@ export type MatchEngineersOutput = z.infer<typeof MatchEngineersOutputSchema>;
 
 const prompt = ai.definePrompt({
   name: 'matchEngineersPrompt',
+  model: 'googleai/gemini-1.5-flash',
   input: {schema: MatchEngineersInputSchema},
   output: {schema: MatchEngineersOutputSchema},
   prompt: `أنت خبير توظيف فني متخصص في الهندسة الطبية الحيوية. مهمتك هي تحليل طلب صيانة وترشيح أفضل 3 مهندسين من القائمة المتاحة.
@@ -59,13 +59,14 @@ const prompt = ai.definePrompt({
 });
 
 /**
- * وظيفة مساعدة للتعامل مع أخطاء Quota (429) و Resource Exhausted عبر إعادة المحاولة مع تأخير زمن متزايد.
+ * وظيفة مساعدة للتعامل مع أخطاء Quota (429) وأخطاء الموديلات عبر إعادة المحاولة مع تأخير زمن متزايد.
  */
 async function runWithRetry<O>(fn: () => Promise<O>, retries = 3): Promise<O> {
   try {
     return await fn();
   } catch (error: any) {
     const msg = error.message || "";
+    // نعتبر أخطاء 429 وأخطاء الموارد المجهدة كأخطاء قابلة لإعادة المحاولة
     const isRetryable = 
       msg.includes('429') || 
       msg.includes('Quota') || 
@@ -73,11 +74,12 @@ async function runWithRetry<O>(fn: () => Promise<O>, retries = 3): Promise<O> {
       msg.includes('Too Many Requests');
 
     if (retries > 0 && isRetryable) {
-      // الانتظار لفترة متزايدة قبل إعادة المحاولة (2 ثانية ثم 4 ثم 6)
+      // الانتظار لفترة متزايدة قبل إعادة المحاولة
       const waitTime = (4 - retries) * 2000;
       await new Promise(resolve => setTimeout(resolve, waitTime));
       return runWithRetry(fn, retries - 1);
     }
+    // في حال خطأ 404 أو أخطاء أخرى غير قابلة للإصلاح، نرمي الخطأ مباشرة
     throw error;
   }
 }
@@ -89,11 +91,10 @@ const matchEngineersFlow = ai.defineFlow(
     outputSchema: MatchEngineersOutputSchema,
   },
   async input => {
-    const response = await runWithRetry(async () => {
+    return await runWithRetry(async () => {
       const {output} = await prompt(input);
-      return output;
+      return output!;
     });
-    return response!;
   }
 );
 
