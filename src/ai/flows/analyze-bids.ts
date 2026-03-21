@@ -1,6 +1,6 @@
 'use server';
 /**
- * @fileOverview يقوم هذا الملف بتحليل ومقارنة عروض المهندسين لمساعدة المستشفيات في اختيار العرض الأنسب باللغة العربية.
+ * @fileOverview يقوم هذا الملف بتحليل ومقارنة عروض المهندسين لمساعدة المستشفيات في اختيار العرض الأنسب.
  */
 
 import {ai} from '@/ai/genkit';
@@ -48,8 +48,21 @@ const prompt = ai.definePrompt({
   تفاصيل العرض: {{{this.description}}}
 {{/each}}
 
-قم بتقديم مقارنة دقيقة باللغة العربية، ورشح أفضل خيار بناءً على التوازن بين السعر والمدة والتقييم، مع توضيح أي مخاطر محتملة (مثل الأسعار المنخفضة بشكل مريب أو الأوصاف الغامضة).`,
+قم بتقديم مقارنة دقيقة باللغة العربية، ورشح أفضل خيار بناءً على التوازن بين السعر والمدة والتقييم.`,
 });
+
+async function runWithRetry<I, O>(fn: (input: I) => Promise<O>, input: I, retries = 2): Promise<O> {
+  try {
+    return await fn(input);
+  } catch (error: any) {
+    const isQuotaError = error.message?.includes('429') || error.message?.includes('Quota');
+    if (retries > 0 && isQuotaError) {
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      return runWithRetry(fn, input, retries - 1);
+    }
+    throw error;
+  }
+}
 
 const analyzeBidsFlow = ai.defineFlow(
   {
@@ -58,7 +71,7 @@ const analyzeBidsFlow = ai.defineFlow(
     outputSchema: AnalyzeBidsOutputSchema,
   },
   async input => {
-    const {output} = await prompt(input);
+    const {output} = await runWithRetry(prompt, input);
     return output!;
   }
 );
