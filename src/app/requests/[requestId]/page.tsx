@@ -179,13 +179,10 @@ export default function RequestDetailsPage() {
       return;
     }
     setIsMatching(true);
-    setMatchedEngineers([]); // Reset previous matches
+    setMatchedEngineers([]); 
     try {
-      // Filter engineers to ensure they meet the Zod schema requirements
       const validEngineers = allEngineers.filter(e => 
-        e.id && e.fullName && e.specialization && 
-        typeof e.yearsExperience === 'number' && 
-        typeof e.rating === 'number'
+        e.id && e.fullName && e.specialization
       );
 
       if (validEngineers.length === 0) {
@@ -198,7 +195,7 @@ export default function RequestDetailsPage() {
         requestTitle: request.title || "طلب صيانة",
         requestDescription: request.description || "",
         deviceSpecialization: request.title?.split(' ')[0] || "Medical Equipment",
-        availableEngineers: validEngineers.slice(0, 20).map(e => ({
+        availableEngineers: validEngineers.map(e => ({
           id: e.id,
           fullName: e.fullName,
           specialization: e.specialization,
@@ -212,7 +209,14 @@ export default function RequestDetailsPage() {
         .map(match => {
           const eng = allEngineers.find(e => e.id === match.engineerId);
           if (!eng) return null;
-          return { ...match, ...eng };
+          return { 
+            id: eng.id,
+            fullName: eng.fullName,
+            specialization: eng.specialization,
+            rating: eng.rating,
+            matchScore: match.matchScore,
+            reason: match.reason
+          };
         })
         .filter(m => m !== null);
 
@@ -356,36 +360,36 @@ export default function RequestDetailsPage() {
         </div>
 
         {matchedEngineers.length > 0 && (isOwner || isAdmin) && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 animate-in fade-in slide-in-from-top-4">
-            <div className="col-span-full flex items-center gap-2 text-emerald-700 font-black mb-2 justify-end">
-              <span>المهندسون الأكثر مطابقة لهذا الطلب (AI Recommendation)</span>
-              <Target className="h-5 w-5" />
+          <div className="bg-emerald-50/50 p-6 rounded-[2.5rem] border-2 border-emerald-100 space-y-6 animate-in fade-in slide-in-from-top-4">
+            <div className="flex items-center gap-3 justify-end text-emerald-800">
+              <h2 className="text-xl font-black">المهندسون المرشحون بواسطة الذكاء الاصطناعي</h2>
+              <div className="bg-emerald-100 p-2 rounded-xl"><Target className="h-5 w-5" /></div>
             </div>
-            {matchedEngineers.map((eng) => (
-              <Card key={eng.id} className="border-2 border-emerald-100 bg-emerald-50/30 rounded-3xl overflow-hidden hover:border-emerald-500 transition-all group">
-                <CardContent className="p-4 text-right relative">
-                  <Badge className="absolute top-2 left-2 bg-emerald-500 font-bold">{eng.matchScore}% مطابقة</Badge>
-                  <div className="flex flex-col items-center gap-2 mt-4">
-                    <div className="bg-emerald-100 p-3 rounded-full">
-                      <UserCheck className="h-6 w-6 text-emerald-700" />
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {matchedEngineers.map((eng) => (
+                <Card key={eng.id} className="border-none shadow-xl rounded-3xl bg-white overflow-hidden hover:scale-[1.02] transition-all">
+                  <CardContent className="p-6 text-right">
+                    <div className="flex justify-between items-start mb-4">
+                      <Badge className="bg-emerald-500 px-3 py-1 font-black text-xs">{eng.matchScore}% مطابقة</Badge>
+                      <div className="bg-emerald-50 p-2 rounded-xl"><UserCheck className="h-5 w-5 text-emerald-600" /></div>
                     </div>
-                    <p className="font-black text-emerald-900">{eng.fullName}</p>
-                    <p className="text-[10px] text-muted-foreground">{eng.specialization}</p>
-                    <div className="flex gap-1 text-yellow-500">
+                    <p className="font-black text-lg text-emerald-900">{eng.fullName}</p>
+                    <p className="text-xs text-muted-foreground mt-1">{eng.specialization}</p>
+                    <div className="flex gap-1 text-yellow-500 mt-2 justify-end">
                       {[1,2,3,4,5].map(s => <Star key={s} className={`h-3 w-3 ${eng.rating >= s ? "fill-current" : ""}`} />)}
                     </div>
-                    <div className="mt-2 bg-white/50 p-3 rounded-xl border border-emerald-100 w-full">
-                      <p className="text-[10px] text-emerald-800 font-medium text-center leading-relaxed italic">"{eng.reason}"</p>
+                    <div className="mt-4 bg-emerald-50/50 p-4 rounded-2xl border border-emerald-100">
+                      <p className="text-xs text-emerald-800 font-medium leading-relaxed italic">"{eng.reason}"</p>
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
           </div>
         )}
 
         {troubleshootResult && (
-          <Card className="bg-blue-50 border-blue-200 rounded-3xl overflow-hidden shadow-lg border-2">
+          <Card className="bg-blue-50 border-blue-200 rounded-[2.5rem] overflow-hidden shadow-lg border-2">
             <CardHeader className="bg-blue-100/50 pb-2 text-right">
               <CardTitle className="text-lg flex items-center gap-2 text-blue-800 justify-end">
                 <span>مساعد التشخيص الذكي</span>
