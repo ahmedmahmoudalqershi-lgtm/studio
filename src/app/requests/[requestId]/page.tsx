@@ -1,36 +1,23 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { Shell } from '@/components/layout/Shell';
 import { useDoc, useFirestore, useUser, useCollection, useMemoFirebase } from '@/firebase';
-import { doc, collection, query, where, serverTimestamp, increment } from 'firebase/firestore';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { doc, collection, query, where, serverTimestamp } from 'firebase/firestore';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Label } from '@/components/ui/label';
 import { 
   ArrowLeft, 
-  Calendar, 
-  AlertTriangle, 
-  Wrench, 
-  User, 
-  Clock,
-  Sparkles,
-  Loader2,
   CheckCircle2,
-  Star,
-  ShieldAlert,
-  Info,
-  DollarSign,
-  Timer,
-  Target,
-  UserCheck,
-  Send,
+  Loader2,
   MessageCircle,
-  Hospital,
-  Zap
+  Zap,
+  Target,
+  UserCheck
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -40,6 +27,7 @@ import { ChatSystem } from '@/components/requests/ChatSystem';
 
 export default function RequestDetailsPage() {
   const { requestId } = useParams();
+  const searchParams = useSearchParams();
   const { user } = useUser();
   const firestore = useFirestore();
   const router = useRouter();
@@ -52,9 +40,6 @@ export default function RequestDetailsPage() {
   const [isMatching, setIsMatching] = useState(false);
   const [isHiring, setIsHiring] = useState<string | null>(null);
   const [matchedEngineers, setMatchedEngineers] = useState<any[]>([]);
-  const [reviewRating, setReviewRating] = useState(5);
-  const [reviewComment, setReviewComment] = useState('');
-  
   const [activeChat, setActiveChat] = useState<{ id: string, name: string } | null>(null);
 
   const userRef = useMemoFirebase(() => {
@@ -71,23 +56,9 @@ export default function RequestDetailsPage() {
   }, [firestore, requestId, user?.uid]);
   
   const { data: request, isLoading: requestLoading } = useDoc(requestRef);
-
   const isOwner = user?.uid === request?.hospitalId;
 
-  const bidsQuery = useMemoFirebase(() => {
-    if (!firestore || !requestId || !user || !request) return null;
-    const bidsCol = collection(firestore, 'maintenanceRequests', requestId as string, 'bids');
-    
-    if (isAdmin) return bidsCol;
-    if (user.uid === request.hospitalId) return query(bidsCol, where('hospitalId', '==', user.uid));
-    return query(bidsCol, where('engineerId', '==', user.uid));
-  }, [firestore, requestId, user?.uid, request?.hospitalId, isAdmin, request]);
-  
-  const { data: bids, isLoading: bidsLoading } = useCollection(bidsQuery);
-
-  const engineersRef = useMemoFirebase(() => firestore ? collection(firestore, 'engineerProfiles') : null, [firestore]);
-  const { data: allEngineers } = useCollection(engineersRef);
-
+  // استرجاع الملفات الشخصية اللازمة للمحادثة
   const hospitalProfileRef = useMemoFirebase(() => {
     if (!firestore || !request?.hospitalId) return null;
     return doc(firestore, 'hospitalProfiles', request.hospitalId);
@@ -100,79 +71,72 @@ export default function RequestDetailsPage() {
   }, [firestore, request?.assignedEngineerId]);
   const { data: assignedEngineerData } = useDoc(assignedEngineerRef);
 
-  // نظام المطابقة المنطقي الفعال
-  function handleSmartMatch() {
-    if (!request || !allEngineers) {
-      toast({ title: "تنبيه", description: "جاري تحميل بيانات المهندسين، يرجى الانتظار ثوانٍ..." });
-      return;
+  // منطق فتح الدردشة تلقائياً عند المجيء من إشعار
+  useEffect(() => {
+    const chatWith = searchParams.get('chatWith');
+    if (chatWith && !requestLoading && request) {
+      if (isEngineer && chatWith === user?.uid) {
+        setActiveChat({ id: user!.uid, name: hospitalProfile?.hospitalName || "المستشفى" });
+      } else if (isOwner) {
+        setActiveChat({ id: chatWith, name: "المهندس" });
+      }
     }
+  }, [searchParams, requestLoading, request, isEngineer, isOwner, user?.uid, hospitalProfile]);
 
+  const bidsQuery = useMemoFirebase(() => {
+    if (!firestore || !requestId || !user || !request) return null;
+    const bidsCol = collection(firestore, 'maintenanceRequests', requestId as string, 'bids');
+    if (isAdmin) return bidsCol;
+    if (user.uid === request.hospitalId) return query(bidsCol, where('hospitalId', '==', user.uid));
+    return query(bidsCol, where('engineerId', '==', user.uid));
+  }, [firestore, requestId, user?.uid, isAdmin, request]);
+  const { data: bids } = useCollection(bidsQuery);
+
+  const engineersRef = useMemoFirebase(() => firestore ? collection(firestore, 'engineerProfiles') : null, [firestore]);
+  const { data: allEngineers } = useCollection(engineersRef);
+
+  function handleSmartMatch() {
+    if (!request || !allEngineers) return;
     setIsMatching(true);
     const requestText = (request.title + " " + (request.description || "")).toLowerCase();
-    
     const matches = allEngineers
       .filter(e => e.fullName && e.specialization) 
       .map(eng => {
         let score = 50; 
         const spec = eng.specialization.toLowerCase();
-        const words = spec.split(/[\s,]+/);
-        let specMatch = false;
-        words.forEach(word => {
-          if (word.length > 2 && requestText.includes(word)) specMatch = true;
-        });
-
-        if (specMatch) score += 40;
-        score += Math.min((eng.yearsExperience || 0), 5);
-        score += Math.min((eng.rating || 5), 5);
-
+        if (requestText.includes(spec)) score += 40;
         return {
           id: eng.id,
           fullName: eng.fullName,
           specialization: eng.specialization,
-          rating: eng.rating || 5,
           matchScore: Math.min(score, 100),
-          reason: `مهندس متخصص في ${eng.specialization} مع خبرة تزيد عن ${eng.yearsExperience} سنوات وتقييم ممتاز، مما يجعله الخيار الأمثل لهذا العطل.`
+          reason: `مهندس متخصص في ${eng.specialization}، مما يجعله الخيار الأمثل لهذا العطل.`
         };
       })
       .sort((a, b) => b.matchScore - a.matchScore)
       .slice(0, 3);
-
     setMatchedEngineers(matches);
     setIsMatching(false);
-    
-    if (matches.length > 0) {
-      toast({ title: "تمت المطابقة بنجاح", description: "تم العثور على أفضل المهندسين المطابقين لطلبك." });
-    } else {
-      toast({ title: "تنبيه", description: "لم نجد مهندسين بتخصصات مطابقة تماماً حالياً." });
-    }
   }
 
   const handleHireEngineer = (engineerId: string, engineerName: string) => {
     if (!firestore || !request) return;
     setIsHiring(engineerId);
-    
-    try {
-      updateDocumentNonBlocking(doc(firestore, 'maintenanceRequests', request.id), {
-        status: 'assigned',
-        assignedEngineerId: engineerId,
-        updatedAt: serverTimestamp(),
-      });
-
-      addDocumentNonBlocking(collection(firestore, 'users', engineerId, 'notifications'), {
-        userId: engineerId,
-        message: `تهانينا! تم اختيارك وتوظيفك مباشرة لصيانة: ${request.title}`,
-        type: 'direct_hiring',
-        isRead: false,
-        createdAt: serverTimestamp(),
-      });
-
-      toast({ title: "تم الاختيار والتوظيف", description: `تم إسناد المهمة للمهندس ${engineerName} بنجاح.` });
-      setMatchedEngineers([]); 
-    } catch (error) {
-      toast({ variant: "destructive", title: "خطأ", description: "فشل إكمال عملية التوظيف." });
-    } finally {
-      setIsHiring(null);
-    }
+    updateDocumentNonBlocking(doc(firestore, 'maintenanceRequests', request.id), {
+      status: 'assigned',
+      assignedEngineerId: engineerId,
+      updatedAt: serverTimestamp(),
+    });
+    addDocumentNonBlocking(collection(firestore, 'users', engineerId, 'notifications'), {
+      userId: engineerId,
+      message: `تم اختيارك وتوظيفك لصيانة: ${request.title}`,
+      type: 'direct_hiring',
+      requestId: requestId,
+      isRead: false,
+      createdAt: serverTimestamp(),
+    });
+    toast({ title: "تم التوظيف", description: `تم إسناد المهمة للمهندس ${engineerName}.` });
+    setIsHiring(null);
   };
 
   const handleAcceptBid = (bid: any) => {
@@ -182,28 +146,15 @@ export default function RequestDetailsPage() {
       assignedEngineerId: bid.engineerId,
       updatedAt: serverTimestamp(),
     });
-    updateDocumentNonBlocking(doc(firestore, 'maintenanceRequests', request.id, 'bids', bid.id), {
-      status: 'accepted',
-      updatedAt: serverTimestamp(),
-    });
     addDocumentNonBlocking(collection(firestore, 'users', bid.engineerId, 'notifications'), {
       userId: bid.engineerId,
       message: `تم قبول عرضك لطلب الصيانة: ${request.title}`,
       type: 'bid_accepted',
+      requestId: requestId,
       isRead: false,
       createdAt: serverTimestamp(),
     });
-    toast({ title: "تم قبول العرض", description: "تم إسناد المهمة للمهندس بنجاح." });
-  };
-
-  const handleCompleteJob = () => {
-    if (!firestore || !request) return;
-    updateDocumentNonBlocking(doc(firestore, 'maintenanceRequests', request.id), {
-      status: 'completed',
-      updatedAt: serverTimestamp(),
-    });
-    toast({ title: "تم إكمال المهمة", description: "تم إغلاق الطلب بنجاح." });
-    router.push('/dashboard');
+    toast({ title: "تم قبول العرض", description: "تم إسناد المهمة للمهندس." });
   };
 
   function handleSendBid() {
@@ -225,6 +176,7 @@ export default function RequestDetailsPage() {
       userId: request.hospitalId,
       message: `وصلك عرض صيانة جديد لطلبك: ${request.title}`,
       type: 'new_bid',
+      requestId: requestId,
       isRead: false,
       createdAt: serverTimestamp(),
     });
@@ -249,54 +201,48 @@ export default function RequestDetailsPage() {
                 <Badge variant={request.status === 'open' ? 'secondary' : 'default'} className="rounded-lg">
                   {request.status === 'open' ? 'مفتوح للمزايدة' : request.status === 'assigned' ? 'قيد العمل' : 'مكتمل'}
                 </Badge>
-                {/* زر الدردشة للمهندس المسند إليه الطلب */}
-                {isEngineer && request.assignedEngineerId === user?.uid && (
+                {isEngineer && (request.assignedEngineerId === user?.uid || bids?.some(b => b.engineerId === user?.uid)) && (
                   <Button 
                     variant="outline" 
                     size="sm" 
                     className="gap-2 text-primary rounded-xl border-primary/20 bg-primary/5"
-                    onClick={() => setActiveChat({ 
-                      id: user!.uid, 
-                      name: hospitalProfile?.hospitalName || "المستشفى" 
-                    })}
+                    onClick={() => setActiveChat({ id: user!.uid, name: hospitalProfile?.hospitalName || "المستشفى" })}
                   >
-                    <MessageCircle className="h-4 w-4" /> الرد على المستشفى (دردشة)
+                    <MessageCircle className="h-4 w-4" /> محادثة التفاوض
                   </Button>
                 )}
-                {/* زر الدردشة للمستشفى مع المهندس المسند إليه الطلب */}
                 {isOwner && request.assignedEngineerId && (
                   <Button 
                     variant="outline" 
                     size="sm" 
                     className="gap-2 text-primary rounded-xl border-primary/20 bg-primary/5"
-                    onClick={() => setActiveChat({ 
-                      id: request.assignedEngineerId!, 
-                      name: assignedEngineerData?.fullName || "المهندس" 
-                    })}
+                    onClick={() => setActiveChat({ id: request.assignedEngineerId!, name: assignedEngineerData?.fullName || "المهندس" })}
                   >
-                    <MessageCircle className="h-4 w-4" /> التواصل مع المهندس (دردشة)
+                    <MessageCircle className="h-4 w-4" /> التواصل مع المهندس
                   </Button>
                 )}
               </div>
             </div>
           </div>
-          
           <div className="flex gap-2">
             {(isOwner || isAdmin) && request.status === 'open' && (
-              <Button variant="outline" onClick={handleSmartMatch} disabled={isMatching} className="gap-2 border-primary text-primary rounded-xl bg-primary/5 hover:bg-primary/10 shadow-sm">
+              <Button variant="outline" onClick={handleSmartMatch} disabled={isMatching} className="gap-2 border-primary text-primary rounded-xl bg-primary/5">
                 {isMatching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4" />}
                 مطابقة واقتراح مهندسين
               </Button>
             )}
             {isOwner && request.status === 'assigned' && (
-              <Button onClick={handleCompleteJob} className="bg-green-600 hover:bg-green-700 gap-2 rounded-xl">
-                <CheckCircle2 className="h-4 w-4" /> إتمام وتقييم المهمة
+              <Button onClick={() => {
+                updateDocumentNonBlocking(doc(firestore!, 'maintenanceRequests', request.id), { status: 'completed', updatedAt: serverTimestamp() });
+                toast({ title: "تم الإكمال", description: "تم إغلاق الطلب بنجاح." });
+                router.push('/dashboard');
+              }} className="bg-green-600 hover:bg-green-700 gap-2 rounded-xl">
+                <CheckCircle2 className="h-4 w-4" /> إتمام المهمة
               </Button>
             )}
           </div>
         </div>
 
-        {/* نافذة الدردشة المنبثقة */}
         {activeChat && (
           <div className="fixed bottom-24 left-6 z-50 w-full max-w-md animate-in slide-in-from-left-4 duration-300">
             <ChatSystem 
@@ -310,13 +256,12 @@ export default function RequestDetailsPage() {
           </div>
         )}
 
-        {/* عرض المهندسين المطابقين */}
         {matchedEngineers.length > 0 && (isOwner || isAdmin) && (
           <div className="bg-primary/5 p-8 rounded-[3rem] border-2 border-primary/10 space-y-6 animate-in zoom-in-95 duration-300 shadow-xl">
             <div className="flex items-center gap-3 justify-end text-primary text-right">
               <div>
                 <h2 className="text-2xl font-black">المرشحون الأنسب لهذه المهمة</h2>
-                <p className="text-xs opacity-70">تمت المطابقة بناءً على التخصص، الخبرة، والتقييم.</p>
+                <p className="text-xs opacity-70">نظام المطابقة البرمجي المنطقي.</p>
               </div>
               <div className="bg-primary/10 p-3 rounded-2xl"><Target className="h-6 w-6" /></div>
             </div>
@@ -327,24 +272,11 @@ export default function RequestDetailsPage() {
                     <Badge className="bg-emerald-500 px-4 py-1.5 font-black text-xs rounded-full w-fit mb-4">{eng.matchScore}% مطابقة</Badge>
                     <p className="font-black text-xl text-foreground">م. {eng.fullName}</p>
                     <p className="text-xs text-muted-foreground mt-1 mb-4 font-bold">{eng.specialization}</p>
-                    
-                    <div className="bg-muted/30 p-4 rounded-2xl mb-6 flex-1">
-                      <p className="text-xs text-muted-foreground italic leading-relaxed">"{eng.reason}"</p>
-                    </div>
-
                     <div className="flex flex-col gap-2 mt-auto">
-                      <Button 
-                        variant="outline"
-                        onClick={() => setActiveChat({ id: eng.id, name: eng.fullName })}
-                        className="w-full h-11 rounded-xl border-primary/20 text-primary hover:bg-primary/5 gap-2 font-bold"
-                      >
+                      <Button variant="outline" onClick={() => setActiveChat({ id: eng.id, name: eng.fullName })} className="w-full h-11 rounded-xl border-primary/20 text-primary gap-2 font-bold">
                         <MessageCircle className="h-4 w-4" /> تفاوض دردشة
                       </Button>
-                      <Button 
-                        onClick={() => handleHireEngineer(eng.id, eng.fullName)}
-                        disabled={isHiring !== null}
-                        className="w-full h-11 rounded-xl bg-primary hover:bg-primary/90 font-bold gap-2"
-                      >
+                      <Button onClick={() => handleHireEngineer(eng.id, eng.fullName)} disabled={isHiring !== null} className="w-full h-11 rounded-xl bg-primary hover:bg-primary/90 font-bold gap-2">
                         {isHiring === eng.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserCheck className="h-4 w-4" />}
                         توظيف مباشر
                       </Button>
@@ -374,29 +306,21 @@ export default function RequestDetailsPage() {
                   <Card key={bid.id} className="hover:shadow-xl transition-all overflow-hidden border-none shadow-md rounded-3xl bg-white">
                     <CardContent className="p-6">
                       <div className="flex flex-col sm:flex-row gap-6">
-                        <div className="flex-1 text-right order-1 sm:order-2">
+                        <div className="flex-1 text-right">
                           <p className="font-bold text-lg mb-2">عرض صيانة مقدم</p>
                           <p className="text-sm text-muted-foreground leading-relaxed bg-muted/20 p-4 rounded-2xl">{bid.description}</p>
                           <div className="mt-4 flex items-center gap-4 justify-end">
                              <Badge variant="outline" className="text-primary font-black px-4">{bid.price} ر.س</Badge>
                              <Badge variant="secondary" className="px-4">{bid.estimatedDays} أيام</Badge>
                              {(isOwner || isAdmin) && (
-                               <Button 
-                                 variant="ghost" 
-                                 size="sm" 
-                                 className="gap-2 text-primary"
-                                 onClick={() => setActiveChat({ 
-                                   id: bid.engineerId, 
-                                   name: 'صاحب العرض' 
-                                 })}
-                               >
+                               <Button variant="ghost" size="sm" className="gap-2 text-primary" onClick={() => setActiveChat({ id: bid.engineerId, name: 'صاحب العرض' })}>
                                  <MessageCircle className="h-4 w-4" /> تفاوض
                                </Button>
                              )}
                           </div>
                         </div>
                         {isOwner && request.status === 'open' && (
-                          <div className="flex items-center justify-center sm:w-40 order-2 sm:order-1 pt-4 sm:pt-0 sm:pl-4 border-t sm:border-t-0 sm:border-l">
+                          <div className="flex items-center justify-center sm:w-40 pt-4 sm:pt-0 border-t sm:border-t-0 sm:border-l">
                             <Button className="w-full rounded-xl font-bold h-11" onClick={() => handleAcceptBid(bid)}>قبول العرض</Button>
                           </div>
                         )}
@@ -410,7 +334,7 @@ export default function RequestDetailsPage() {
 
           <div className="space-y-6">
             {!isOwner && !isAdmin && request.status === 'open' && (
-              <Card className="shadow-2xl border-t-4 border-t-primary rounded-3xl sticky top-24">
+              <Card className="shadow-2xl border-t-4 border-t-primary rounded-3xl">
                 <CardHeader className="text-right">
                   <CardTitle className="text-2xl font-black">تقديم عرض صيانة</CardTitle>
                 </CardHeader>

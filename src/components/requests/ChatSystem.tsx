@@ -21,8 +21,8 @@ interface ChatSystemProps {
 }
 
 /**
- * نظام دردشة متطور (يشبه واتساب) مخصص للتفاوض بين المستشفى والمهندس.
- * يدعم المزامنة اللحظية والإشعارات المتبادلة.
+ * نظام دردشة متطور مخصص للتفاوض بين المستشفى والمهندس.
+ * تم تحسينه لإرسال إشعارات تحتوي على بيانات الربط للرد الفوري.
  */
 export function ChatSystem({ requestId, engineerId, engineerName, hospitalId, hospitalName, onClose }: ChatSystemProps) {
   const { user } = useUser();
@@ -31,7 +31,6 @@ export function ChatSystem({ requestId, engineerId, engineerName, hospitalId, ho
   const [isSending, setIsSending] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // استرجاع الرسائل مرتبة زمنياً
   const messagesRef = useMemoFirebase(() => {
     if (!firestore || !requestId || !engineerId) return null;
     return query(
@@ -42,7 +41,6 @@ export function ChatSystem({ requestId, engineerId, engineerName, hospitalId, ho
 
   const { data: messages, isLoading } = useCollection(messagesRef);
 
-  // التمرير التلقائي لآخر رسالة عند التحديث
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollIntoView({ behavior: 'smooth' });
@@ -65,16 +63,17 @@ export function ChatSystem({ requestId, engineerId, engineerName, hospitalId, ho
         createdAt: serverTimestamp(),
       });
 
-      // تحديد المستقبل بناءً على هوية المرسل الحالي
       const isEngineerSending = user.uid === engineerId;
       const recipientId = isEngineerSending ? hospitalId : engineerId;
       const senderDisplayName = isEngineerSending ? `المهندس ${engineerName}` : hospitalName || "المستشفى";
 
-      // إرسال إشعار للمستقبل
+      // إرسال إشعار يحتوي على بيانات الربط لتمكين الرد الفوري
       addDocumentNonBlocking(collection(firestore, 'users', recipientId, 'notifications'), {
         userId: recipientId,
         message: `رسالة جديدة من ${senderDisplayName}: ${text.substring(0, 50)}${text.length > 50 ? '...' : ''}`,
         type: 'chat_message',
+        requestId: requestId, // ربط الطلب
+        engineerId: engineerId, // ربط غرفة الدردشة
         isRead: false,
         createdAt: serverTimestamp(),
       });
@@ -91,7 +90,6 @@ export function ChatSystem({ requestId, engineerId, engineerName, hospitalId, ho
 
   return (
     <div className="flex flex-col h-[550px] w-full bg-white rounded-[2.5rem] shadow-2xl border-none overflow-hidden animate-in fade-in slide-in-from-bottom-8 border border-primary/10">
-      {/* رأس الدردشة */}
       <div className="bg-primary p-5 text-primary-foreground flex justify-between items-center shadow-md">
         <Button variant="ghost" size="icon" onClick={onClose} className="text-white hover:bg-white/20 rounded-full h-10 w-10">
           <X className="h-5 w-5" />
@@ -111,7 +109,6 @@ export function ChatSystem({ requestId, engineerId, engineerName, hospitalId, ho
         </div>
       </div>
 
-      {/* منطقة الرسائل */}
       <ScrollArea className="flex-1 p-6 bg-slate-50/50">
         <div className="space-y-4">
           {isLoading ? (
@@ -156,7 +153,6 @@ export function ChatSystem({ requestId, engineerId, engineerName, hospitalId, ho
         </div>
       </ScrollArea>
 
-      {/* حقل الإدخال */}
       <form onSubmit={handleSendMessage} className="p-4 bg-white border-t flex gap-3 items-center shadow-inner">
         <Button 
           type="submit" 

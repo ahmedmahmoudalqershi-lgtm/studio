@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useEffect } from 'react';
@@ -16,7 +15,6 @@ import {
   Users,
   ShieldCheck,
   Settings,
-  Check,
   Briefcase
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -24,7 +22,7 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useUser, useAuth, useFirestore, useCollection, useMemoFirebase, useDoc } from '@/firebase';
 import { signOut } from 'firebase/auth';
-import { collection, query, orderBy, limit, doc, serverTimestamp } from 'firebase/firestore';
+import { collection, query, orderBy, limit, doc } from 'firebase/firestore';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -90,6 +88,18 @@ export function Shell({ children }: ShellProps) {
     updateDocumentNonBlocking(doc(firestore, 'users', user.uid, 'notifications', notifId), {
       isRead: true
     });
+  };
+
+  const handleNotificationClick = (notif: any) => {
+    markAsRead(notif.id);
+    if (notif.requestId) {
+      let url = `/requests/${notif.requestId}`;
+      // إذا كان إشعار دردشة، أضف معامل لفتحها تلقائياً
+      if (notif.type === 'chat_message' && notif.engineerId) {
+        url += `?chatWith=${notif.engineerId}`;
+      }
+      router.push(url);
+    }
   };
 
   const getNavItems = () => {
@@ -170,7 +180,7 @@ export function Shell({ children }: ShellProps) {
                           "flex flex-col items-start gap-1 p-3 cursor-pointer rounded-xl transition-colors text-right relative mb-1",
                           !notif.isRead ? "bg-primary/5 hover:bg-primary/10" : "hover:bg-muted"
                         )}
-                        onClick={() => markAsRead(notif.id)}
+                        onClick={() => handleNotificationClick(notif)}
                       >
                         <div className="flex items-start justify-between w-full gap-2">
                           <p className={cn("text-xs leading-relaxed", !notif.isRead ? "font-bold text-foreground" : "text-muted-foreground")}>{notif.message}</p>
