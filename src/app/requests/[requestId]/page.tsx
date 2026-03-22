@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect } from 'react';
@@ -38,15 +37,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { addDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { useToast } from '@/hooks/use-toast';
 import { ChatSystem } from '@/components/requests/ChatSystem';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
 
 export default function RequestDetailsPage() {
   const { requestId } = useParams();
@@ -110,7 +100,7 @@ export default function RequestDetailsPage() {
   }, [firestore, request?.assignedEngineerId]);
   const { data: assignedEngineerData } = useDoc(assignedEngineerRef);
 
-  // نظام المطابقة المنطقي الفعال (بدون ذكاء اصطناعي لضمان الاستقرار)
+  // نظام المطابقة المنطقي الفعال
   function handleSmartMatch() {
     if (!request || !allEngineers) {
       toast({ title: "تنبيه", description: "جاري تحميل بيانات المهندسين، يرجى الانتظار ثوانٍ..." });
@@ -118,34 +108,21 @@ export default function RequestDetailsPage() {
     }
 
     setIsMatching(true);
-    
-    // 1. استخراج الكلمات الدلالية من الطلب
     const requestText = (request.title + " " + (request.description || "")).toLowerCase();
     
-    // 2. تحليل المهندسين وحساب نقاط المطابقة برمجياً
     const matches = allEngineers
-      .filter(e => e.fullName && e.specialization) // تصفية المهندسين غير مكتملي البيانات
+      .filter(e => e.fullName && e.specialization) 
       .map(eng => {
-        let score = 50; // رصيد أساسي
+        let score = 50; 
         const spec = eng.specialization.toLowerCase();
-        
-        // التحقق من توافق التخصص دلالياً
         const words = spec.split(/[\s,]+/);
         let specMatch = false;
         words.forEach(word => {
-          if (word.length > 2 && requestText.includes(word)) {
-            specMatch = true;
-          }
+          if (word.length > 2 && requestText.includes(word)) specMatch = true;
         });
 
-        if (specMatch) {
-          score += 40; // زيادة كبيرة إذا كان التخصص مطابقاً
-        }
-        
-        // نقاط إضافية للخبرة (1 نقطة لكل سنة بحد أقصى 5)
+        if (specMatch) score += 40;
         score += Math.min((eng.yearsExperience || 0), 5);
-        
-        // نقاط إضافية للتقييم (نقطة لكل نجمة)
         score += Math.min((eng.rating || 5), 5);
 
         return {
@@ -157,22 +134,16 @@ export default function RequestDetailsPage() {
           reason: `مهندس متخصص في ${eng.specialization} مع خبرة تزيد عن ${eng.yearsExperience} سنوات وتقييم ممتاز، مما يجعله الخيار الأمثل لهذا العطل.`
         };
       })
-      .sort((a, b) => b.matchScore - a.matchScore) // ترتيب من الأعلى للأقل مطابقة
-      .slice(0, 3); // أخذ أفضل 3 فقط
+      .sort((a, b) => b.matchScore - a.matchScore)
+      .slice(0, 3);
 
     setMatchedEngineers(matches);
     setIsMatching(false);
     
     if (matches.length > 0) {
-      toast({ 
-        title: "تمت المطابقة بنجاح", 
-        description: "تم العثور على أفضل 3 مهندسين مطابقين لطلبك بناءً على معايير التخصص والخبرة." 
-      });
+      toast({ title: "تمت المطابقة بنجاح", description: "تم العثور على أفضل المهندسين المطابقين لطلبك." });
     } else {
-      toast({ 
-        title: "تنبيه", 
-        description: "لم نجد مهندسين بتخصصات مطابقة تماماً حالياً، جرب تصفح قائمة العروض اليدوية." 
-      });
+      toast({ title: "تنبيه", description: "لم نجد مهندسين بتخصصات مطابقة تماماً حالياً." });
     }
   }
 
@@ -195,11 +166,7 @@ export default function RequestDetailsPage() {
         createdAt: serverTimestamp(),
       });
 
-      toast({ 
-        title: "تم الاختيار والتوظيف", 
-        description: `تم إسناد المهمة للمهندس ${engineerName} بنجاح. سيتلقى إشعاراً للبدء فوراً.` 
-      });
-      
+      toast({ title: "تم الاختيار والتوظيف", description: `تم إسناد المهمة للمهندس ${engineerName} بنجاح.` });
       setMatchedEngineers([]); 
     } catch (error) {
       toast({ variant: "destructive", title: "خطأ", description: "فشل إكمال عملية التوظيف." });
@@ -235,27 +202,6 @@ export default function RequestDetailsPage() {
       status: 'completed',
       updatedAt: serverTimestamp(),
     });
-    if (request.assignedEngineerId) {
-      addDocumentNonBlocking(collection(firestore, 'reviews'), {
-        requestId: request.id,
-        hospitalId: user?.uid,
-        engineerId: request.assignedEngineerId,
-        rating: reviewRating,
-        comment: reviewComment,
-        createdAt: serverTimestamp(),
-      });
-      updateDocumentNonBlocking(doc(firestore, 'engineerProfiles', request.assignedEngineerId), {
-        totalJobs: increment(1),
-        updatedAt: serverTimestamp(),
-      });
-      addDocumentNonBlocking(collection(firestore, 'users', request.assignedEngineerId, 'notifications'), {
-        userId: request.assignedEngineerId,
-        message: `تم إكمال وتقييم مهمتك لطلب: ${request.title}`,
-        type: 'job_completed',
-        isRead: false,
-        createdAt: serverTimestamp(),
-      });
-    }
     toast({ title: "تم إكمال المهمة", description: "تم إغلاق الطلب بنجاح." });
     router.push('/dashboard');
   };
@@ -303,17 +249,32 @@ export default function RequestDetailsPage() {
                 <Badge variant={request.status === 'open' ? 'secondary' : 'default'} className="rounded-lg">
                   {request.status === 'open' ? 'مفتوح للمزايدة' : request.status === 'assigned' ? 'قيد العمل' : 'مكتمل'}
                 </Badge>
-                {(isOwner || (isEngineer && request.assignedEngineerId === user?.uid)) && (
+                {/* زر الدردشة للمهندس المسند إليه الطلب */}
+                {isEngineer && request.assignedEngineerId === user?.uid && (
                   <Button 
                     variant="outline" 
                     size="sm" 
-                    className="gap-2 text-primary rounded-xl border-primary/20"
+                    className="gap-2 text-primary rounded-xl border-primary/20 bg-primary/5"
                     onClick={() => setActiveChat({ 
-                      id: isOwner ? (request.assignedEngineerId || "") : user!.uid, 
-                      name: isOwner ? (assignedEngineerData?.fullName || "المهندس") : (hospitalProfile?.hospitalName || "المستشفى") 
+                      id: user!.uid, 
+                      name: hospitalProfile?.hospitalName || "المستشفى" 
                     })}
                   >
-                    <MessageCircle className="h-4 w-4" /> فتح محادثة التفاوض
+                    <MessageCircle className="h-4 w-4" /> الرد على المستشفى (دردشة)
+                  </Button>
+                )}
+                {/* زر الدردشة للمستشفى مع المهندس المسند إليه الطلب */}
+                {isOwner && request.assignedEngineerId && (
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="gap-2 text-primary rounded-xl border-primary/20 bg-primary/5"
+                    onClick={() => setActiveChat({ 
+                      id: request.assignedEngineerId!, 
+                      name: assignedEngineerData?.fullName || "المهندس" 
+                    })}
+                  >
+                    <MessageCircle className="h-4 w-4" /> التواصل مع المهندس (دردشة)
                   </Button>
                 )}
               </div>
@@ -335,8 +296,9 @@ export default function RequestDetailsPage() {
           </div>
         </div>
 
+        {/* نافذة الدردشة المنبثقة */}
         {activeChat && (
-          <div className="fixed bottom-24 left-6 z-50 w-full max-w-md">
+          <div className="fixed bottom-24 left-6 z-50 w-full max-w-md animate-in slide-in-from-left-4 duration-300">
             <ChatSystem 
               requestId={requestId as string}
               engineerId={activeChat.id}
@@ -348,12 +310,13 @@ export default function RequestDetailsPage() {
           </div>
         )}
 
+        {/* عرض المهندسين المطابقين */}
         {matchedEngineers.length > 0 && (isOwner || isAdmin) && (
-          <div className="bg-primary/5 p-8 rounded-[3rem] border-2 border-primary/10 space-y-6 animate-in zoom-in-95 duration-300">
+          <div className="bg-primary/5 p-8 rounded-[3rem] border-2 border-primary/10 space-y-6 animate-in zoom-in-95 duration-300 shadow-xl">
             <div className="flex items-center gap-3 justify-end text-primary text-right">
               <div>
-                <h2 className="text-2xl font-black">أفضل المهندسين المطابقين للطلب</h2>
-                <p className="text-xs opacity-70">تم اختيارهم برمجياً بناءً على تخصص الجهاز وخبرة المهندسين.</p>
+                <h2 className="text-2xl font-black">المرشحون الأنسب لهذه المهمة</h2>
+                <p className="text-xs opacity-70">تمت المطابقة بناءً على التخصص، الخبرة، والتقييم.</p>
               </div>
               <div className="bg-primary/10 p-3 rounded-2xl"><Target className="h-6 w-6" /></div>
             </div>
@@ -375,7 +338,7 @@ export default function RequestDetailsPage() {
                         onClick={() => setActiveChat({ id: eng.id, name: eng.fullName })}
                         className="w-full h-11 rounded-xl border-primary/20 text-primary hover:bg-primary/5 gap-2 font-bold"
                       >
-                        <MessageCircle className="h-4 w-4" /> بدء تفاوض دردشة
+                        <MessageCircle className="h-4 w-4" /> تفاوض دردشة
                       </Button>
                       <Button 
                         onClick={() => handleHireEngineer(eng.id, eng.fullName)}
@@ -389,9 +352,6 @@ export default function RequestDetailsPage() {
                   </CardContent>
                 </Card>
               ))}
-            </div>
-            <div className="text-center">
-              <Button variant="ghost" className="text-muted-foreground text-xs" onClick={() => setMatchedEngineers([])}>إغلاق المقترحات</Button>
             </div>
           </div>
         )}
@@ -408,7 +368,7 @@ export default function RequestDetailsPage() {
             </Card>
 
             <div className="space-y-4 text-right">
-              <h2 className="text-2xl font-black">عروض الصيانة والعقود</h2>
+              <h2 className="text-2xl font-black">العروض المقدمة</h2>
               <div className="space-y-4">
                 {bids?.map(bid => (
                   <Card key={bid.id} className="hover:shadow-xl transition-all overflow-hidden border-none shadow-md rounded-3xl bg-white">
@@ -419,35 +379,31 @@ export default function RequestDetailsPage() {
                           <p className="text-sm text-muted-foreground leading-relaxed bg-muted/20 p-4 rounded-2xl">{bid.description}</p>
                           <div className="mt-4 flex items-center gap-4 justify-end">
                              <Badge variant="outline" className="text-primary font-black px-4">{bid.price} ر.س</Badge>
-                             {(isOwner || isAdmin || bid.engineerId === user?.uid) && (
+                             <Badge variant="secondary" className="px-4">{bid.estimatedDays} أيام</Badge>
+                             {(isOwner || isAdmin) && (
                                <Button 
                                  variant="ghost" 
                                  size="sm" 
                                  className="gap-2 text-primary"
                                  onClick={() => setActiveChat({ 
                                    id: bid.engineerId, 
-                                   name: 'المهندس' 
+                                   name: 'صاحب العرض' 
                                  })}
                                >
-                                 <MessageCircle className="h-4 w-4" /> فتح محادثة التفاوض
+                                 <MessageCircle className="h-4 w-4" /> تفاوض
                                </Button>
                              )}
                           </div>
                         </div>
                         {isOwner && request.status === 'open' && (
                           <div className="flex items-center justify-center sm:w-40 order-2 sm:order-1 pt-4 sm:pt-0 sm:pl-4 border-t sm:border-t-0 sm:border-l">
-                            <Button className="w-full rounded-xl font-bold h-11" onClick={() => handleAcceptBid(bid)}>قبول هذا العرض</Button>
+                            <Button className="w-full rounded-xl font-bold h-11" onClick={() => handleAcceptBid(bid)}>قبول العرض</Button>
                           </div>
                         )}
                       </div>
                     </CardContent>
                   </Card>
                 ))}
-                {(!bids || bids.length === 0) && (
-                  <div className="p-8 text-center text-muted-foreground italic bg-white rounded-3xl shadow-sm">
-                    لم يتم تقديم أي عروض يدوية بعد لهذا الطلب.
-                  </div>
-                )}
               </div>
             </div>
           </div>
@@ -473,46 +429,6 @@ export default function RequestDetailsPage() {
                   <Button className="w-full h-14 text-lg font-bold rounded-xl shadow-xl shadow-primary/20" onClick={handleSendBid} disabled={isSubmittingBid || !bidPrice}>
                     {isSubmittingBid ? <Loader2 className="h-5 w-5 animate-spin" /> : 'إرسال العرض'}
                   </Button>
-                </CardContent>
-              </Card>
-            )}
-            
-            {isEngineer && request.status === 'assigned' && request.assignedEngineerId === user?.uid && (
-              <Card className="bg-primary/10 border-primary/20 rounded-3xl p-6 text-right">
-                <div className="bg-primary/20 w-12 h-12 rounded-2xl flex items-center justify-center mb-4">
-                  <Wrench className="h-6 w-6 text-primary" />
-                </div>
-                <h3 className="font-black text-xl text-primary">أنت المهندس المعتمد لهذا الطلب</h3>
-                <p className="text-sm text-muted-foreground mt-2 leading-relaxed">يرجى التواصل مع المستشفى عبر الدردشة للتنسيق والبدء في أعمال الصيانة.</p>
-                <Button 
-                  className="w-full mt-6 rounded-xl gap-2 font-bold"
-                  onClick={() => setActiveChat({ id: user!.uid, name: hospitalProfile?.hospitalName || "المستشفى" })}
-                >
-                  <MessageCircle className="h-4 w-4" /> فتح محادثة التفاوض
-                </Button>
-              </Card>
-            )}
-
-            {isOwner && request.status !== 'open' && request.assignedEngineerId && (
-              <Card className="border-none shadow-xl rounded-3xl bg-white overflow-hidden">
-                <CardHeader className="bg-primary/5 text-right">
-                  <CardTitle className="text-lg font-bold">المهندس المعتمد</CardTitle>
-                </CardHeader>
-                <CardContent className="p-6 text-right">
-                  <div className="flex items-center justify-between">
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      className="text-primary gap-2 font-bold"
-                      onClick={() => setActiveChat({ id: request.assignedEngineerId!, name: assignedEngineerData?.fullName || "المهندس" })}
-                    >
-                      <MessageCircle className="h-4 w-4" /> دردشة
-                    </Button>
-                    <div>
-                      <p className="font-black text-lg">م. {assignedEngineerData?.fullName || "قيد التحميل..."}</p>
-                      <p className="text-xs text-muted-foreground">{assignedEngineerData?.specialization}</p>
-                    </div>
-                  </div>
                 </CardContent>
               </Card>
             )}
