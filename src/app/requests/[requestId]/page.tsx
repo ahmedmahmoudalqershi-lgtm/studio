@@ -30,16 +30,13 @@ import {
   UserCheck,
   Send,
   MessageCircle,
-  Hospital
+  Hospital,
+  Zap
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { addDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { useToast } from '@/hooks/use-toast';
-import { analyzeBids } from '@/ai/flows/analyze-bids';
-import { troubleshootDevice, type TroubleshootOutput } from '@/ai/flows/troubleshoot-device';
-import { generateBidDescription } from '@/ai/flows/generate-bid-description';
-import { matchEngineers } from '@/ai/flows/match-engineers';
 import { ChatSystem } from '@/components/requests/ChatSystem';
 import {
   Dialog,
@@ -62,7 +59,6 @@ export default function RequestDetailsPage() {
   const [bidDays, setBidDays] = useState('');
   const [bidDesc, setBidDesc] = useState('');
   const [isSubmittingBid, setIsSubmittingBid] = useState(false);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isMatching, setIsMatching] = useState(false);
   const [isHiring, setIsHiring] = useState<string | null>(null);
   const [matchedEngineers, setMatchedEngineers] = useState<any[]>([]);
@@ -113,6 +109,72 @@ export default function RequestDetailsPage() {
     return doc(firestore, 'engineerProfiles', request.assignedEngineerId);
   }, [firestore, request?.assignedEngineerId]);
   const { data: assignedEngineerData } = useDoc(assignedEngineerRef);
+
+  // نظام المطابقة المنطقي الفعال (بدون ذكاء اصطناعي لضمان الاستقرار)
+  function handleSmartMatch() {
+    if (!request || !allEngineers) {
+      toast({ title: "تنبيه", description: "جاري تحميل بيانات المهندسين، يرجى الانتظار ثوانٍ..." });
+      return;
+    }
+
+    setIsMatching(true);
+    
+    // 1. استخراج الكلمات الدلالية من الطلب
+    const requestText = (request.title + " " + (request.description || "")).toLowerCase();
+    
+    // 2. تحليل المهندسين وحساب نقاط المطابقة برمجياً
+    const matches = allEngineers
+      .filter(e => e.fullName && e.specialization) // تصفية المهندسين غير مكتملي البيانات
+      .map(eng => {
+        let score = 50; // رصيد أساسي
+        const spec = eng.specialization.toLowerCase();
+        
+        // التحقق من توافق التخصص دلالياً
+        const words = spec.split(/[\s,]+/);
+        let specMatch = false;
+        words.forEach(word => {
+          if (word.length > 2 && requestText.includes(word)) {
+            specMatch = true;
+          }
+        });
+
+        if (specMatch) {
+          score += 40; // زيادة كبيرة إذا كان التخصص مطابقاً
+        }
+        
+        // نقاط إضافية للخبرة (1 نقطة لكل سنة بحد أقصى 5)
+        score += Math.min((eng.yearsExperience || 0), 5);
+        
+        // نقاط إضافية للتقييم (نقطة لكل نجمة)
+        score += Math.min((eng.rating || 5), 5);
+
+        return {
+          id: eng.id,
+          fullName: eng.fullName,
+          specialization: eng.specialization,
+          rating: eng.rating || 5,
+          matchScore: Math.min(score, 100),
+          reason: `مهندس متخصص في ${eng.specialization} مع خبرة تزيد عن ${eng.yearsExperience} سنوات وتقييم ممتاز، مما يجعله الخيار الأمثل لهذا العطل.`
+        };
+      })
+      .sort((a, b) => b.matchScore - a.matchScore) // ترتيب من الأعلى للأقل مطابقة
+      .slice(0, 3); // أخذ أفضل 3 فقط
+
+    setMatchedEngineers(matches);
+    setIsMatching(false);
+    
+    if (matches.length > 0) {
+      toast({ 
+        title: "تمت المطابقة بنجاح", 
+        description: "تم العثور على أفضل 3 مهندسين مطابقين لطلبك بناءً على معايير التخصص والخبرة." 
+      });
+    } else {
+      toast({ 
+        title: "تنبيه", 
+        description: "لم نجد مهندسين بتخصصات مطابقة تماماً حالياً، جرب تصفح قائمة العروض اليدوية." 
+      });
+    }
+  }
 
   const handleHireEngineer = (engineerId: string, engineerName: string) => {
     if (!firestore || !request) return;
@@ -198,65 +260,6 @@ export default function RequestDetailsPage() {
     router.push('/dashboard');
   };
 
-  async function handleSmartMatch() {
-    if (!request || !allEngineers) {
-      toast({ title: "تنبيه", description: "جاري تحميل البيانات، يرجى المحاولة بعد قليل." });
-      return;
-    }
-
-    const validEngineers = allEngineers.filter(e => e.id && e.fullName && e.specialization);
-
-    if (validEngineers.length === 0) {
-      toast({ title: "تنبيه", description: "لا يوجد مهندسين بملفات مكتملة حالياً للمطابقة." });
-      return;
-    }
-
-    setIsMatching(true);
-    setMatchedEngineers([]); 
-    
-    try {
-      const result = await matchEngineers({
-        requestTitle: request.title || "طلب صيانة",
-        requestDescription: request.description || "لا يوجد وصف",
-        availableEngineers: validEngineers.map(e => ({
-          id: e.id,
-          fullName: e.fullName,
-          specialization: e.specialization,
-          yearsExperience: Number(e.yearsExperience) || 0,
-          rating: Number(e.rating) || 5,
-          totalJobs: Number(e.totalJobs) || 0
-        }))
-      });
-      
-      const enrichedMatches = result.recommendations
-        .map(match => {
-          const eng = allEngineers.find(e => e.id === match.engineerId);
-          if (!eng) return null;
-          return { 
-            id: eng.id,
-            fullName: eng.fullName,
-            specialization: eng.specialization,
-            rating: eng.rating,
-            matchScore: match.matchScore,
-            reason: match.reason
-          };
-        })
-        .filter(m => m !== null);
-
-      if (enrichedMatches.length > 0) {
-        setMatchedEngineers(enrichedMatches);
-        toast({ title: "تمت المطابقة", description: "تم العثور على أفضل المهندسين المناسبين لطلبك." });
-      } else {
-        toast({ title: "تنبيه", description: "لم يجد النظام مهندسين مطابقين تماماً لهذه المواصفات حالياً." });
-      }
-    } catch (error) {
-      console.error("Smart match error:", error);
-      toast({ variant: "destructive", title: "خطأ", description: "فشل نظام المطابقة الذكي. يرجى المحاولة لاحقاً." });
-    } finally {
-      setIsMatching(false);
-    }
-  }
-
   function handleSendBid() {
     if (!user || !requestId || !firestore || !request) return;
     setIsSubmittingBid(true);
@@ -300,12 +303,15 @@ export default function RequestDetailsPage() {
                 <Badge variant={request.status === 'open' ? 'secondary' : 'default'} className="rounded-lg">
                   {request.status === 'open' ? 'مفتوح للمزايدة' : request.status === 'assigned' ? 'قيد العمل' : 'مكتمل'}
                 </Badge>
-                {isEngineer && request.assignedEngineerId === user?.uid && (
+                {(isOwner || (isEngineer && request.assignedEngineerId === user?.uid)) && (
                   <Button 
                     variant="outline" 
                     size="sm" 
                     className="gap-2 text-primary rounded-xl border-primary/20"
-                    onClick={() => setActiveChat({ id: user!.uid, name: hospitalProfile?.hospitalName || "المستشفى" })}
+                    onClick={() => setActiveChat({ 
+                      id: isOwner ? (request.assignedEngineerId || "") : user!.uid, 
+                      name: isOwner ? (assignedEngineerData?.fullName || "المهندس") : (hospitalProfile?.hospitalName || "المستشفى") 
+                    })}
                   >
                     <MessageCircle className="h-4 w-4" /> فتح محادثة التفاوض
                   </Button>
@@ -316,8 +322,8 @@ export default function RequestDetailsPage() {
           
           <div className="flex gap-2">
             {(isOwner || isAdmin) && request.status === 'open' && (
-              <Button variant="outline" onClick={handleSmartMatch} disabled={isMatching} className="gap-2 border-emerald-500 text-emerald-600 rounded-xl">
-                {isMatching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Target className="h-4 w-4" />}
+              <Button variant="outline" onClick={handleSmartMatch} disabled={isMatching} className="gap-2 border-primary text-primary rounded-xl bg-primary/5 hover:bg-primary/10 shadow-sm">
+                {isMatching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4" />}
                 مطابقة واقتراح مهندسين
               </Button>
             )}
@@ -343,38 +349,38 @@ export default function RequestDetailsPage() {
         )}
 
         {matchedEngineers.length > 0 && (isOwner || isAdmin) && (
-          <div className="bg-emerald-50/50 p-8 rounded-[3rem] border-2 border-emerald-100 space-y-6">
-            <div className="flex items-center gap-3 justify-end text-emerald-800 text-right">
+          <div className="bg-primary/5 p-8 rounded-[3rem] border-2 border-primary/10 space-y-6 animate-in zoom-in-95 duration-300">
+            <div className="flex items-center gap-3 justify-end text-primary text-right">
               <div>
-                <h2 className="text-2xl font-black">أفضل المهندسين المناسبين</h2>
-                <p className="text-xs opacity-70">بناءً على تخصص الجهاز وخبرة المهندسين المسجلين.</p>
+                <h2 className="text-2xl font-black">أفضل المهندسين المطابقين للطلب</h2>
+                <p className="text-xs opacity-70">تم اختيارهم برمجياً بناءً على تخصص الجهاز وخبرة المهندسين.</p>
               </div>
-              <div className="bg-emerald-100 p-3 rounded-2xl"><Sparkles className="h-6 w-6" /></div>
+              <div className="bg-primary/10 p-3 rounded-2xl"><Target className="h-6 w-6" /></div>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
               {matchedEngineers.map((eng) => (
-                <Card key={eng.id} className="border-none shadow-2xl rounded-[2.5rem] bg-white overflow-hidden flex flex-col">
+                <Card key={eng.id} className="border-none shadow-2xl rounded-[2.5rem] bg-white overflow-hidden flex flex-col group hover:scale-[1.02] transition-transform">
                   <CardContent className="p-6 text-right flex-1 flex flex-col">
                     <Badge className="bg-emerald-500 px-4 py-1.5 font-black text-xs rounded-full w-fit mb-4">{eng.matchScore}% مطابقة</Badge>
-                    <p className="font-black text-xl text-emerald-900">م. {eng.fullName}</p>
-                    <p className="text-xs text-muted-foreground mt-1 mb-4">{eng.specialization}</p>
+                    <p className="font-black text-xl text-foreground">م. {eng.fullName}</p>
+                    <p className="text-xs text-muted-foreground mt-1 mb-4 font-bold">{eng.specialization}</p>
                     
-                    <div className="bg-emerald-50/50 p-4 rounded-2xl border border-emerald-100 mb-6 flex-1">
-                      <p className="text-xs text-emerald-800 italic leading-relaxed">"{eng.reason}"</p>
+                    <div className="bg-muted/30 p-4 rounded-2xl mb-6 flex-1">
+                      <p className="text-xs text-muted-foreground italic leading-relaxed">"{eng.reason}"</p>
                     </div>
 
                     <div className="flex flex-col gap-2 mt-auto">
                       <Button 
                         variant="outline"
                         onClick={() => setActiveChat({ id: eng.id, name: eng.fullName })}
-                        className="w-full h-11 rounded-xl border-emerald-200 text-emerald-700 hover:bg-emerald-100 gap-2 font-bold"
+                        className="w-full h-11 rounded-xl border-primary/20 text-primary hover:bg-primary/5 gap-2 font-bold"
                       >
                         <MessageCircle className="h-4 w-4" /> بدء تفاوض دردشة
                       </Button>
                       <Button 
                         onClick={() => handleHireEngineer(eng.id, eng.fullName)}
                         disabled={isHiring !== null}
-                        className="w-full h-11 rounded-xl bg-emerald-600 hover:bg-emerald-700 font-bold gap-2"
+                        className="w-full h-11 rounded-xl bg-primary hover:bg-primary/90 font-bold gap-2"
                       >
                         {isHiring === eng.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserCheck className="h-4 w-4" />}
                         توظيف مباشر
@@ -384,6 +390,9 @@ export default function RequestDetailsPage() {
                 </Card>
               ))}
             </div>
+            <div className="text-center">
+              <Button variant="ghost" className="text-muted-foreground text-xs" onClick={() => setMatchedEngineers([])}>إغلاق المقترحات</Button>
+            </div>
           </div>
         )}
 
@@ -391,7 +400,7 @@ export default function RequestDetailsPage() {
           <div className="lg:col-span-2 space-y-6">
             <Card className="border-none shadow-xl rounded-3xl overflow-hidden bg-white">
               <CardHeader className="bg-muted/30 border-b text-right">
-                <CardTitle className="text-xl font-bold">وصف العطل الطبي</CardTitle>
+                <CardTitle className="text-xl font-bold">وصف العطل التقني</CardTitle>
               </CardHeader>
               <CardContent className="p-8 text-right">
                 <p className="text-muted-foreground whitespace-pre-wrap leading-relaxed text-lg">{request.description}</p>
@@ -399,14 +408,14 @@ export default function RequestDetailsPage() {
             </Card>
 
             <div className="space-y-4 text-right">
-              <h2 className="text-2xl font-black">عروض الصيانة المقدمة</h2>
+              <h2 className="text-2xl font-black">عروض الصيانة والعقود</h2>
               <div className="space-y-4">
                 {bids?.map(bid => (
                   <Card key={bid.id} className="hover:shadow-xl transition-all overflow-hidden border-none shadow-md rounded-3xl bg-white">
                     <CardContent className="p-6">
                       <div className="flex flex-col sm:flex-row gap-6">
                         <div className="flex-1 text-right order-1 sm:order-2">
-                          <p className="font-bold text-lg mb-2">مهندس متخصص</p>
+                          <p className="font-bold text-lg mb-2">عرض صيانة مقدم</p>
                           <p className="text-sm text-muted-foreground leading-relaxed bg-muted/20 p-4 rounded-2xl">{bid.description}</p>
                           <div className="mt-4 flex items-center gap-4 justify-end">
                              <Badge variant="outline" className="text-primary font-black px-4">{bid.price} ر.س</Badge>
@@ -415,7 +424,10 @@ export default function RequestDetailsPage() {
                                  variant="ghost" 
                                  size="sm" 
                                  className="gap-2 text-primary"
-                                 onClick={() => setActiveChat({ id: bid.engineerId, name: 'المهندس' })}
+                                 onClick={() => setActiveChat({ 
+                                   id: bid.engineerId, 
+                                   name: 'المهندس' 
+                                 })}
                                >
                                  <MessageCircle className="h-4 w-4" /> فتح محادثة التفاوض
                                </Button>
@@ -424,7 +436,7 @@ export default function RequestDetailsPage() {
                         </div>
                         {isOwner && request.status === 'open' && (
                           <div className="flex items-center justify-center sm:w-40 order-2 sm:order-1 pt-4 sm:pt-0 sm:pl-4 border-t sm:border-t-0 sm:border-l">
-                            <Button className="w-full rounded-xl font-bold h-11" onClick={() => handleAcceptBid(bid)}>قبول العرض</Button>
+                            <Button className="w-full rounded-xl font-bold h-11" onClick={() => handleAcceptBid(bid)}>قبول هذا العرض</Button>
                           </div>
                         )}
                       </div>
@@ -433,7 +445,7 @@ export default function RequestDetailsPage() {
                 ))}
                 {(!bids || bids.length === 0) && (
                   <div className="p-8 text-center text-muted-foreground italic bg-white rounded-3xl shadow-sm">
-                    لم يتم تقديم أي عروض بعد لهذا الطلب.
+                    لم يتم تقديم أي عروض يدوية بعد لهذا الطلب.
                   </div>
                 )}
               </div>
@@ -466,17 +478,17 @@ export default function RequestDetailsPage() {
             )}
             
             {isEngineer && request.status === 'assigned' && request.assignedEngineerId === user?.uid && (
-              <Card className="bg-blue-50 border-blue-200 rounded-3xl p-6 text-right">
-                <div className="bg-blue-100 w-12 h-12 rounded-2xl flex items-center justify-center mb-4">
+              <Card className="bg-primary/10 border-primary/20 rounded-3xl p-6 text-right">
+                <div className="bg-primary/20 w-12 h-12 rounded-2xl flex items-center justify-center mb-4">
                   <Wrench className="h-6 w-6 text-primary" />
                 </div>
                 <h3 className="font-black text-xl text-primary">أنت المهندس المعتمد لهذا الطلب</h3>
-                <p className="text-sm text-muted-foreground mt-2 leading-relaxed">يرجى التواصل مع المستشفى عبر الدردشة للتنسيق والبدء.</p>
+                <p className="text-sm text-muted-foreground mt-2 leading-relaxed">يرجى التواصل مع المستشفى عبر الدردشة للتنسيق والبدء في أعمال الصيانة.</p>
                 <Button 
-                  className="w-full mt-6 rounded-xl gap-2"
+                  className="w-full mt-6 rounded-xl gap-2 font-bold"
                   onClick={() => setActiveChat({ id: user!.uid, name: hospitalProfile?.hospitalName || "المستشفى" })}
                 >
-                  <MessageCircle className="h-4 w-4" /> التواصل مع المستشفى الآن
+                  <MessageCircle className="h-4 w-4" /> فتح محادثة التفاوض
                 </Button>
               </Card>
             )}
@@ -491,7 +503,7 @@ export default function RequestDetailsPage() {
                     <Button 
                       variant="ghost" 
                       size="sm" 
-                      className="text-primary gap-2"
+                      className="text-primary gap-2 font-bold"
                       onClick={() => setActiveChat({ id: request.assignedEngineerId!, name: assignedEngineerData?.fullName || "المهندس" })}
                     >
                       <MessageCircle className="h-4 w-4" /> دردشة
