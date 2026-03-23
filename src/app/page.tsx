@@ -4,7 +4,7 @@ import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Hospital, ShieldCheck, Activity, Globe, Users, Zap } from 'lucide-react';
 
-const APP_LOGO_URL = `https://picsum.photos/seed/med-platform-logo/800/800`;
+const APP_LOGO_URL = `/logo.png`;
 
 export default function Home() {
   return (
@@ -12,13 +12,13 @@ export default function Home() {
       {/* Hero Section */}
       <section className="relative flex-1 flex flex-col items-center justify-center p-6 text-center space-y-12 overflow-hidden">
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-1000 max-w-4xl z-10">
-          <div className="relative mx-auto w-40 h-40 rounded-[2.5rem] bg-white p-4 shadow-2xl shadow-primary/20 transform hover:rotate-6 transition-transform cursor-pointer overflow-hidden border">
+          <div className="relative mx-auto w-56 h-56 rounded-[2.5rem] bg-white p-2 shadow-2xl shadow-primary/20 transform hover:rotate-2 transition-transform cursor-pointer overflow-hidden border">
             <Image 
               src={APP_LOGO_URL} 
-              alt="صيانة بلس" 
+              alt="المنصة المتقدمة للهندسة الطبية" 
               fill 
-              className="object-contain p-2" 
-              data-ai-hint="medical logo"
+              className="object-contain" 
+              priority
             />
           </div>
           <h1 className="text-5xl sm:text-7xl font-black font-headline tracking-tighter text-primary leading-tight">
@@ -50,7 +50,6 @@ export default function Home() {
           </Link>
         </div>
 
-        {/* Stats / Trust Bar */}
         <div className="flex flex-wrap justify-center gap-8 py-8 animate-in fade-in duration-1000 delay-500 z-10">
           <div className="flex items-center gap-2 text-primary/60 font-bold">
             <Globe className="h-5 w-5" />
@@ -63,33 +62,6 @@ export default function Home() {
           <div className="flex items-center gap-2 text-primary/60 font-bold">
             <Zap className="h-5 w-5" />
             <span>دعم فوري متميز</span>
-          </div>
-        </div>
-
-        {/* Features Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 pt-12 text-right animate-in fade-in duration-1000 delay-700 w-full max-w-6xl z-10">
-          <div className="bg-white/70 backdrop-blur-sm p-8 rounded-[2.5rem] border-2 border-transparent hover:border-primary/10 shadow-xl shadow-slate-200/50 space-y-4 transition-all">
-            <div className="bg-blue-100 w-12 h-12 rounded-2xl flex items-center justify-center">
-              <Activity className="h-6 w-6 text-primary" />
-            </div>
-            <h3 className="font-black text-2xl text-primary">إدارة ذكية للأصول</h3>
-            <p className="text-muted-foreground leading-relaxed">تابع الحالة الفنية لأسطول أجهزتك الطبية، واحصل على تنبيهات الصيانة الدورية تلقائياً.</p>
-          </div>
-          <div className="bg-white/70 backdrop-blur-sm p-8 rounded-[2.5rem] border-2 border-transparent hover:border-primary/10 shadow-xl shadow-slate-200/50 space-y-4 transition-all">
-            <div className="bg-cyan-100 w-12 h-12 rounded-2xl flex items-center justify-center">
-              <ShieldCheck className="h-6 w-6 text-secondary" />
-            </div>
-            <h3 className="font-black text-2xl text-primary">توثيق احترافي</h3>
-            <p className="text-muted-foreground leading-relaxed">جميع المهندسين في المنصة يخضعون لعملية تدقيق صارمة لضمان أعلى مستويات الكفاءة والأمان.</p>
-          </div>
-          <div className="bg-white/70 backdrop-blur-sm p-8 rounded-[2.5rem] border-2 border-transparent hover:border-primary/10 shadow-xl shadow-slate-200/50 space-y-4 transition-all">
-            <div className="bg-purple-100 w-12 h-12 rounded-2xl flex items-center justify-center">
-               <div className="relative w-7 h-7">
-                 <Image src={APP_LOGO_URL} alt="AI" fill className="object-contain" />
-               </div>
-            </div>
-            <h3 className="font-black text-2xl text-primary">المنصة المتقدمة</h3>
-            <p className="text-muted-foreground leading-relaxed">نظام متكامل يجمع بين الخبرة البشرية والذكاء البرمجي لضمان أفضل تشخيص وأسرع إصلاح.</p>
           </div>
         </div>
       </section>

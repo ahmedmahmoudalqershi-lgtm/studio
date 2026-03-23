@@ -35,7 +35,7 @@ import {
 import { updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { NotificationManager } from '@/components/NotificationManager';
 
-const APP_LOGO_URL = `https://picsum.photos/seed/med-platform/800/800`;
+const APP_LOGO_URL = `/logo.png`;
 
 interface ShellProps {
   children: React.ReactNode;
@@ -136,7 +136,7 @@ export function Shell({ children }: ShellProps) {
   if (isUserLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="w-12 h-12 relative animate-pulse">
+        <div className="w-16 h-16 relative animate-pulse">
            <Image src={APP_LOGO_URL} alt="Logo" fill className="object-contain" />
         </div>
       </div>
@@ -152,10 +152,10 @@ export function Shell({ children }: ShellProps) {
         <div className="container flex h-16 items-center justify-between px-6 mx-auto">
           <div className="flex items-center gap-3">
             <Link href="/dashboard" className="flex items-center gap-3 group">
-              <div className="relative w-10 h-10 group-hover:scale-110 transition-transform">
+              <div className="relative w-12 h-12 group-hover:scale-110 transition-transform">
                 <Image src={APP_LOGO_URL} alt="صيانة بلس" fill className="object-contain" />
               </div>
-              <h1 className="text-xl font-black font-headline hidden sm:block tracking-tight text-primary">صيانة بلس</h1>
+              <h1 className="text-xl font-black font-headline hidden sm:block tracking-tight text-primary">المنصة المتقدمة</h1>
             </Link>
           </div>
           

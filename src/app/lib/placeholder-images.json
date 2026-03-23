@@ -3,8 +3,8 @@
   "placeholderImages": [
     {
       "id": "med-platform-logo",
-      "description": "المنصة المتقدمة للهندسة الطبية - شعار احترافي",
-      "imageUrl": "https://picsum.photos/seed/med-platform-logo/800/800",
+      "description": "المنصة المتقدمة للهندسة الطبية - الشعار المؤسسي",
+      "imageUrl": "/logo.png",
       "imageHint": "medical engineering logo"
     },
     {

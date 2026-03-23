@@ -15,7 +15,7 @@ import { useToast } from '@/hooks/use-toast';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 
-const APP_LOGO_URL = `https://picsum.photos/seed/med-platform-logo/800/800`;
+const APP_LOGO_URL = `/logo.png`;
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -124,14 +124,14 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-slate-100 p-4 relative overflow-hidden" dir="rtl">
       <Card className="w-full max-w-md shadow-[0_20px_50px_rgba(8,_112,_184,_0.2)] border-none overflow-hidden rounded-[2.5rem] z-10 relative bg-white/95 backdrop-blur-md">
         <div className="bg-primary p-8 text-center text-primary-foreground relative overflow-hidden">
-          <div className="bg-white mx-auto w-24 h-24 rounded-3xl flex items-center justify-center mb-4 p-2 shadow-2xl">
+          <div className="bg-white mx-auto w-32 h-32 rounded-3xl flex items-center justify-center mb-4 p-1 shadow-2xl">
             <Image 
               src={APP_LOGO_URL} 
               alt="المنصة المتقدمة للهندسة الطبية" 
-              width={80} 
-              height={80} 
+              width={120} 
+              height={120} 
               className="object-contain"
-              data-ai-hint="medical icon"
+              priority
             />
           </div>
           <CardTitle className="text-3xl font-black font-headline tracking-tight">بوابة الصيانة</CardTitle>

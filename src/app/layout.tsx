@@ -6,8 +6,8 @@ import { FirebaseClientProvider } from '@/firebase';
 import Script from 'next/script';
 import Image from 'next/image';
 
-// استخدام رابط الشعار الموحد للمنصة المتقدمة للهندسة الطبية
-const APP_LOGO_URL = `https://picsum.photos/seed/med-platform-logo/800/800`;
+// مسار الشعار الموحد الذي طلبه المستخدم
+const APP_LOGO_URL = `/logo.png`;
 
 export const viewport: Viewport = {
   themeColor: '#2862B4',
@@ -47,13 +47,13 @@ export default function RootLayout({
         <meta name="mobile-web-app-capable" content="yes" />
       </head>
       <body className="font-body antialiased bg-background min-h-screen flex flex-col relative overflow-x-hidden">
-        {/* العلامة المائية في الخلفية - مركزية وبحجم مناسب */}
-        <div className="fixed inset-0 -z-50 pointer-events-none flex items-center justify-center opacity-[0.04]">
+        {/* العلامة المائية في الخلفية - مركزية وشفافة */}
+        <div className="fixed inset-0 -z-50 pointer-events-none flex items-center justify-center opacity-[0.06]">
           <Image 
             src={APP_LOGO_URL} 
-            alt="Watermark" 
-            width={700} 
-            height={700} 
+            alt="المنصة المتقدمة للهندسة الطبية" 
+            width={800} 
+            height={800} 
             className="object-contain"
             priority
           />
