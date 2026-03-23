@@ -121,72 +121,77 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-100 p-4 relative overflow-hidden" dir="rtl">
-      <Card className="w-full max-w-md shadow-[0_20px_50px_rgba(8,_112,_184,_0.2)] border-none overflow-hidden rounded-[2.5rem] z-10 relative bg-white/95 backdrop-blur-md">
-        <div className="bg-primary p-8 text-center text-primary-foreground relative overflow-hidden">
-          <div className="bg-white mx-auto w-32 h-32 rounded-3xl flex items-center justify-center mb-4 p-1 shadow-2xl overflow-hidden">
+    <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4 relative overflow-hidden" dir="rtl">
+      {/* خلفية جمالية */}
+      <div className="absolute top-0 left-0 w-full h-full opacity-[0.03] pointer-events-none">
+        <Image src={APP_LOGO_URL} alt="Bg" fill className="object-cover" />
+      </div>
+
+      <Card className="w-full max-w-md shadow-2xl border-none overflow-hidden rounded-[3rem] z-10 relative bg-white/95 backdrop-blur-xl ring-1 ring-black/5">
+        <div className="bg-primary p-10 text-center text-primary-foreground relative overflow-hidden">
+          <div className="bg-white mx-auto w-24 h-24 sm:w-32 sm:h-32 rounded-3xl flex items-center justify-center mb-6 p-2 shadow-2xl overflow-hidden transform hover:scale-105 transition-transform">
             <Image 
               src={APP_LOGO_URL} 
-              alt="المنصة المتقدمة للهندسة الطبية" 
+              alt="صيانة بلس" 
               width={120} 
               height={120} 
               className="object-contain"
               priority
             />
           </div>
-          <CardTitle className="text-2xl font-black font-headline tracking-tight">بوابة الصيانة</CardTitle>
-          <CardDescription className="text-primary-foreground/90 mt-2 font-medium">المنصة المتقدمة للهندسة الطبية</CardDescription>
+          <CardTitle className="text-3xl font-black font-headline tracking-tighter">بوابة صيانة بلس</CardTitle>
+          <CardDescription className="text-primary-foreground/80 mt-2 font-medium">المنصة المتقدمة للهندسة الطبية</CardDescription>
         </div>
 
-        <CardContent className="pt-8 px-8">
+        <CardContent className="pt-8 px-8 sm:px-10 pb-10">
           <Tabs defaultValue="hospital" className="w-full" onValueChange={(v) => setActiveRole(v as any)}>
-            <TabsList className="grid w-full grid-cols-3 mb-8 bg-muted/50 p-1 h-14 rounded-2xl">
-              <TabsTrigger value="hospital" className="gap-1 rounded-xl text-xs sm:text-sm font-bold">
+            <TabsList className="grid w-full grid-cols-3 mb-8 bg-muted/50 p-1.5 h-14 rounded-2xl">
+              <TabsTrigger value="hospital" className="gap-1.5 rounded-xl text-xs sm:text-sm font-bold data-[state=active]:shadow-md">
                 <Hospital className="h-4 w-4" /> مستشفى
               </TabsTrigger>
-              <TabsTrigger value="engineer" className="gap-1 rounded-xl text-xs sm:text-sm font-bold">
+              <TabsTrigger value="engineer" className="gap-1.5 rounded-xl text-xs sm:text-sm font-bold data-[state=active]:shadow-md">
                 <ShieldCheck className="h-4 w-4" /> مهندس
               </TabsTrigger>
-              <TabsTrigger value="admin" className="gap-1 rounded-xl text-xs sm:text-sm font-bold">
+              <TabsTrigger value="admin" className="gap-1.5 rounded-xl text-xs sm:text-sm font-bold data-[state=active]:shadow-md">
                 <Settings className="h-4 w-4" /> مدير
               </TabsTrigger>
             </TabsList>
             
-            <div className="space-y-5">
+            <div className="space-y-6">
               {isSignUp && (
                 <div className="space-y-2">
-                  <Label htmlFor="name" className="font-bold text-foreground/80">{activeRole === 'hospital' ? 'اسم المستشفى' : activeRole === 'admin' ? 'الاسم الإداري' : 'الاسم الكامل'}</Label>
+                  <Label htmlFor="name" className="font-bold text-foreground/80 pr-2">{activeRole === 'hospital' ? 'اسم المستشفى' : activeRole === 'admin' ? 'الاسم الإداري' : 'الاسم الكامل'}</Label>
                   <div className="relative">
-                    <UserIcon className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                    <Input id="name" placeholder="أدخل الاسم هنا..." className="pr-10 h-13 rounded-xl border-2 focus:border-primary/50" value={name} onChange={(e) => setName(e.target.value)} />
+                    <UserIcon className="absolute right-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                    <Input id="name" placeholder="أدخل الاسم هنا..." className="pr-12 h-14 rounded-2xl border-2 focus:border-primary/50 bg-slate-50/50" value={name} onChange={(e) => setName(e.target.value)} />
                   </div>
                 </div>
               )}
 
               <div className="space-y-2">
-                <Label htmlFor="email" className="font-bold text-foreground/80">البريد الإلكتروني</Label>
-                <Input id="email" type="email" placeholder="example@email.com" className="h-13 rounded-xl text-right border-2 focus:border-primary/50" value={email} onChange={(e) => setEmail(e.target.value)} />
+                <Label htmlFor="email" className="font-bold text-foreground/80 pr-2">البريد الإلكتروني</Label>
+                <Input id="email" type="email" placeholder="example@email.com" className="h-14 rounded-2xl text-right border-2 focus:border-primary/50 bg-slate-50/50" value={email} onChange={(e) => setEmail(e.target.value)} />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="password" className="font-bold text-foreground/80">كلمة المرور</Label>
-                <Input id="password" type="password" className="h-13 rounded-xl text-right border-2 focus:border-primary/50" value={password} onChange={(e) => setPassword(e.target.value)} />
+                <Label htmlFor="password" className="font-bold text-foreground/80 pr-2">كلمة المرور</Label>
+                <Input id="password" type="password" placeholder="••••••••" className="h-14 rounded-2xl text-right border-2 focus:border-primary/50 bg-slate-50/50" value={password} onChange={(e) => setPassword(e.target.value)} />
               </div>
 
-              <Button onClick={handleAuth} disabled={isLoading} className="w-full h-15 text-lg rounded-2xl shadow-xl shadow-primary/20 mt-4 font-black tracking-wide">
-                {isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : (isSignUp ? 'إنشاء حساب جديد' : 'تسجيل الدخول')}
+              <Button onClick={handleAuth} disabled={isLoading} className="w-full h-15 text-lg rounded-[1.5rem] shadow-xl shadow-primary/20 mt-4 font-black tracking-wide">
+                {isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : (isSignUp ? 'إنشاء حساب جديد' : 'دخول المنصة')}
               </Button>
 
               <div className="text-center pt-2">
-                <Button variant="link" onClick={() => setIsSignUp(!isSignUp)} className="text-sm font-bold text-primary/80">
+                <Button variant="link" onClick={() => setIsSignUp(!isSignUp)} className="text-sm font-bold text-primary/80 hover:text-primary transition-colors">
                   {isSignUp ? 'لديك حساب بالفعل؟ سجل دخولك' : 'لا تملك حساباً؟ أنشئ حساباً جديداً'}
                 </Button>
               </div>
             </div>
           </Tabs>
         </CardContent>
-        <CardFooter className="text-center text-xs text-muted-foreground justify-center border-t py-6 bg-muted/10 font-medium">
-          دخول آمن للمنصة • صيانة بلس • 2024
+        <CardFooter className="text-center text-xs text-muted-foreground justify-center border-t py-6 bg-slate-50 font-medium">
+          دخول آمن ومشفر • صيانة بلس • {new Date().getFullYear()}
         </CardFooter>
       </Card>
     </div>

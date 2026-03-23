@@ -137,7 +137,7 @@ export function Shell({ children }: ShellProps) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="w-20 h-20 relative animate-pulse">
-           <Image src={APP_LOGO_URL} alt="Logo" fill className="object-contain" />
+           <Image src={APP_LOGO_URL} alt="جاري التحميل..." fill className="object-contain" />
         </div>
       </div>
     );
@@ -148,14 +148,14 @@ export function Shell({ children }: ShellProps) {
   return (
     <div className="flex flex-col min-h-screen">
       <NotificationManager />
-      <header className="sticky top-0 z-40 w-full border-b bg-white/80 backdrop-blur-md">
+      <header className="sticky top-0 z-40 w-full border-b bg-white/95 backdrop-blur-md shadow-sm">
         <div className="container flex h-16 items-center justify-between px-6 mx-auto">
           <div className="flex items-center gap-3">
             <Link href="/dashboard" className="flex items-center gap-3 group">
-              <div className="relative w-12 h-12 group-hover:scale-110 transition-transform">
+              <div className="relative w-10 h-10 group-hover:rotate-6 transition-transform">
                 <Image src={APP_LOGO_URL} alt="صيانة بلس" fill className="object-contain" />
               </div>
-              <h1 className="text-xl font-black font-headline hidden sm:block tracking-tight text-primary">المنصة المتقدمة</h1>
+              <h1 className="text-xl font-black font-headline tracking-tighter text-primary">صيانة بلس</h1>
             </Link>
           </div>
           
@@ -218,7 +218,7 @@ export function Shell({ children }: ShellProps) {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-64 rounded-2xl p-2 shadow-2xl" dir="rtl">
-                <DropdownMenuLabel className="px-3 py-3 text-right">
+                <DropdownMenuLabel className="px-3 py-3 text-right border-b">
                   <div className="flex flex-col space-y-1">
                     <p className="text-sm font-black leading-none">{profile?.fullName || profile?.hospitalName || (userRole === 'admin' ? 'مدير النظام' : user?.email)}</p>
                     <p className="text-[10px] leading-none text-muted-foreground capitalize mt-1">
@@ -226,7 +226,6 @@ export function Shell({ children }: ShellProps) {
                     </p>
                   </div>
                 </DropdownMenuLabel>
-                <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
                   <Link href="/profile" className="cursor-pointer flex items-center gap-2 p-3 rounded-xl hover:bg-muted transition-colors justify-end group">
                     <span className="group-hover:text-primary">الملف الشخصي</span>
@@ -250,7 +249,7 @@ export function Shell({ children }: ShellProps) {
         </div>
       </main>
 
-      <nav className="fixed bottom-6 left-6 right-6 z-50 border bg-white/90 backdrop-blur-xl md:hidden rounded-[2rem] shadow-2xl border-white/20">
+      <nav className="fixed bottom-6 left-6 right-6 z-50 border bg-white/90 backdrop-blur-xl md:hidden rounded-[2.5rem] shadow-2xl border-white/20">
         <div className="flex justify-around items-center h-16 px-2">
           {navItems.map((item) => {
             const isActive = pathname === item.href;

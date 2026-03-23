@@ -7,6 +7,7 @@ import Script from 'next/script';
 import Image from 'next/image';
 
 // مسار الشعار الذي يمثل "المنصة المتقدمة للهندسة الطبية"
+// نستخدم مساراً موحداً ليسهل على المستخدم استبداله لاحقاً في مجلد public
 const APP_LOGO_URL = `/logo.png`;
 
 export const viewport: Viewport = {
@@ -47,16 +48,17 @@ export default function RootLayout({
         <meta name="mobile-web-app-capable" content="yes" />
       </head>
       <body className="font-body antialiased bg-background min-h-screen flex flex-col relative overflow-x-hidden">
-        {/* العلامة المائية في الخلفية - مركزية وشفافة جداً */}
-        <div className="fixed inset-0 -z-50 pointer-events-none flex items-center justify-center opacity-[0.08]">
-          <Image 
-            src={APP_LOGO_URL} 
-            alt="المنصة المتقدمة للهندسة الطبية" 
-            width={700} 
-            height={700} 
-            className="object-contain"
-            priority
-          />
+        {/* العلامة المائية في الخلفية - مركزية وشفافة جداً تظهر في كل الصفحات */}
+        <div className="fixed inset-0 -z-50 pointer-events-none flex items-center justify-center opacity-[0.05]">
+          <div className="relative w-[300px] h-[300px] md:w-[600px] md:h-[600px]">
+            <Image 
+              src={APP_LOGO_URL} 
+              alt="العلامة المائية للمنصة" 
+              fill 
+              className="object-contain grayscale"
+              priority
+            />
+          </div>
         </div>
 
         <FirebaseClientProvider>
