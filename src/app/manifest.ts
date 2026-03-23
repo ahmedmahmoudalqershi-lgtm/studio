@@ -1,9 +1,8 @@
 
 import { MetadataRoute } from 'next'
 
-// استخدام أيقونات PNG مميزة (درع طبي) لضمان قبول التثبيت كـ WebAPK على أندرويد
-const ICON_192 = 'https://img.icons8.com/fluency/192/shield-with-a-medical-cross.png';
-const ICON_512 = 'https://img.icons8.com/fluency/512/shield-with-a-medical-cross.png';
+// استخدام رمز المفتاح التقني كأيقونة للتطبيق القابل للتثبيت
+const ICON_URL = 'https://img.icons8.com/fluency/240/key.png';
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
@@ -19,13 +18,13 @@ export default function manifest(): MetadataRoute.Manifest {
     orientation: 'portrait',
     icons: [
       {
-        src: ICON_192,
+        src: ICON_URL,
         sizes: '192x192',
         type: 'image/png',
         purpose: 'any',
       },
       {
-        src: ICON_512,
+        src: ICON_URL,
         sizes: '512x512',
         type: 'image/png',
         purpose: 'maskable',

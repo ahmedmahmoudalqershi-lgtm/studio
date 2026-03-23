@@ -15,7 +15,7 @@ import { useToast } from '@/hooks/use-toast';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 
-const APP_LOGO_URL = `https://img.icons8.com/fluency/240/shield-with-a-medical-cross.png`;
+const APP_LOGO_URL = `https://img.icons8.com/fluency/240/key.png`;
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -83,7 +83,7 @@ export default function LoginPage() {
             id: newUser.uid,
             userId: newUser.uid,
             hospitalName: name,
-            address: "الرياض، المملكة العربية السعودية",
+            address: "المملكة العربية السعودية",
             city: "الرياض",
             phone: "05XXXXXXXX",
             createdAt: serverTimestamp(),

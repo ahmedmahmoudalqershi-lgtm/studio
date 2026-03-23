@@ -4,7 +4,7 @@ import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Hospital, ShieldCheck, Activity, Globe, Users, Zap } from 'lucide-react';
 
-const APP_LOGO_URL = `https://img.icons8.com/fluency/240/shield-with-a-medical-cross.png`;
+const APP_LOGO_URL = `https://img.icons8.com/fluency/240/key.png`;
 
 export default function Home() {
   return (
