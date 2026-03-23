@@ -15,7 +15,7 @@ import { useToast } from '@/hooks/use-toast';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 
-const APP_LOGO_URL = `/logo.png`;
+const APP_LOGO_URL = `https://img.icons8.com/fluency/240/shield-with-a-medical-cross.png`;
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -122,19 +122,14 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4 relative overflow-hidden" dir="rtl">
-      {/* خلفية جمالية */}
-      <div className="absolute top-0 left-0 w-full h-full opacity-[0.03] pointer-events-none">
-        <Image src={APP_LOGO_URL} alt="Bg" fill className="object-cover" />
-      </div>
-
       <Card className="w-full max-w-md shadow-2xl border-none overflow-hidden rounded-[3rem] z-10 relative bg-white/95 backdrop-blur-xl ring-1 ring-black/5">
         <div className="bg-primary p-10 text-center text-primary-foreground relative overflow-hidden">
-          <div className="bg-white mx-auto w-24 h-24 sm:w-32 sm:h-32 rounded-3xl flex items-center justify-center mb-6 p-2 shadow-2xl overflow-hidden transform hover:scale-105 transition-transform">
+          <div className="bg-white mx-auto w-24 h-24 sm:w-32 sm:h-32 rounded-3xl flex items-center justify-center mb-6 p-4 shadow-2xl overflow-hidden transform hover:scale-105 transition-transform">
             <Image 
               src={APP_LOGO_URL} 
               alt="صيانة بلس" 
-              width={120} 
-              height={120} 
+              width={140} 
+              height={140} 
               className="object-contain"
               priority
             />

@@ -4,7 +4,7 @@ import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Hospital, ShieldCheck, Activity, Globe, Users, Zap } from 'lucide-react';
 
-const APP_LOGO_URL = `/logo.png`;
+const APP_LOGO_URL = `https://img.icons8.com/fluency/240/shield-with-a-medical-cross.png`;
 
 export default function Home() {
   return (
@@ -12,12 +12,12 @@ export default function Home() {
       {/* Hero Section */}
       <section className="relative flex-1 flex flex-col items-center justify-center p-6 text-center space-y-12 overflow-hidden">
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-1000 max-w-4xl z-10">
-          <div className="relative mx-auto w-48 h-48 sm:w-64 sm:h-64 rounded-[3rem] bg-white p-4 shadow-2xl shadow-primary/20 transform hover:scale-105 transition-transform cursor-pointer border-4 border-primary/5 overflow-hidden">
+          <div className="relative mx-auto w-48 h-48 sm:w-60 sm:h-60 rounded-[3rem] bg-white p-6 shadow-2xl shadow-primary/20 transform hover:scale-105 transition-transform cursor-pointer border-4 border-primary/5 overflow-hidden">
             <Image 
               src={APP_LOGO_URL} 
               alt="شعار المنصة المتقدمة للهندسة الطبية" 
               fill 
-              className="object-contain p-2" 
+              className="object-contain p-4" 
               priority
             />
           </div>

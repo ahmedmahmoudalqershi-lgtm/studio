@@ -6,9 +6,8 @@ import { FirebaseClientProvider } from '@/firebase';
 import Script from 'next/script';
 import Image from 'next/image';
 
-// مسار الشعار الذي يمثل "المنصة المتقدمة للهندسة الطبية"
-// نستخدم مساراً موحداً ليسهل على المستخدم استبداله لاحقاً في مجلد public
-const APP_LOGO_URL = `/logo.png`;
+// الشعار الجديد: درع طبي تقني يعبر عن "صيانة بلس"
+const APP_LOGO_URL = `https://img.icons8.com/fluency/240/shield-with-a-medical-cross.png`;
 
 export const viewport: Viewport = {
   themeColor: '#2862B4',
@@ -48,9 +47,9 @@ export default function RootLayout({
         <meta name="mobile-web-app-capable" content="yes" />
       </head>
       <body className="font-body antialiased bg-background min-h-screen flex flex-col relative overflow-x-hidden">
-        {/* العلامة المائية في الخلفية - مركزية وشفافة جداً تظهر في كل الصفحات */}
-        <div className="fixed inset-0 -z-50 pointer-events-none flex items-center justify-center opacity-[0.05]">
-          <div className="relative w-[300px] h-[300px] md:w-[600px] md:h-[600px]">
+        {/* العلامة المائية الجديدة - مركزية وبحجم منطقي في خلفية كل الصفحات */}
+        <div className="fixed inset-0 -z-50 pointer-events-none flex items-center justify-center opacity-[0.04]">
+          <div className="relative w-[350px] h-[350px] md:w-[650px] md:h-[650px]">
             <Image 
               src={APP_LOGO_URL} 
               alt="العلامة المائية للمنصة" 

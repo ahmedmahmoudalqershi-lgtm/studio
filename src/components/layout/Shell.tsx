@@ -35,7 +35,7 @@ import {
 import { updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { NotificationManager } from '@/components/NotificationManager';
 
-const APP_LOGO_URL = `/logo.png`;
+const APP_LOGO_URL = `https://img.icons8.com/fluency/240/shield-with-a-medical-cross.png`;
 
 interface ShellProps {
   children: React.ReactNode;
