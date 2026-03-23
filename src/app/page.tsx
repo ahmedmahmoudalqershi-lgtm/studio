@@ -12,7 +12,7 @@ export default function Home() {
       {/* Hero Section */}
       <section className="relative flex-1 flex flex-col items-center justify-center p-6 text-center space-y-12 overflow-hidden">
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-1000 max-w-4xl z-10">
-          <div className="relative mx-auto w-56 h-56 rounded-[2.5rem] bg-white p-2 shadow-2xl shadow-primary/20 transform hover:rotate-2 transition-transform cursor-pointer overflow-hidden border">
+          <div className="relative mx-auto w-64 h-64 rounded-[2.5rem] bg-white p-2 shadow-2xl shadow-primary/20 transform hover:rotate-2 transition-transform cursor-pointer overflow-hidden border">
             <Image 
               src={APP_LOGO_URL} 
               alt="المنصة المتقدمة للهندسة الطبية" 
@@ -21,7 +21,7 @@ export default function Home() {
               priority
             />
           </div>
-          <h1 className="text-5xl sm:text-7xl font-black font-headline tracking-tighter text-primary leading-tight">
+          <h1 className="text-5xl sm:text-6xl font-black font-headline tracking-tighter text-primary leading-tight">
             المنصة المتقدمة <br /> <span className="text-secondary">للهندسة الطبية</span>
           </h1>
           <p className="text-xl sm:text-2xl text-muted-foreground max-w-2xl mx-auto leading-relaxed font-medium">

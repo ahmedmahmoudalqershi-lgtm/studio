@@ -136,7 +136,7 @@ export function Shell({ children }: ShellProps) {
   if (isUserLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="w-16 h-16 relative animate-pulse">
+        <div className="w-20 h-20 relative animate-pulse">
            <Image src={APP_LOGO_URL} alt="Logo" fill className="object-contain" />
         </div>
       </div>

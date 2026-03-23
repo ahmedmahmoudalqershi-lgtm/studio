@@ -6,7 +6,7 @@ import { FirebaseClientProvider } from '@/firebase';
 import Script from 'next/script';
 import Image from 'next/image';
 
-// مسار الشعار الموحد الذي طلبه المستخدم
+// مسار الشعار الذي يمثل "المنصة المتقدمة للهندسة الطبية"
 const APP_LOGO_URL = `/logo.png`;
 
 export const viewport: Viewport = {
@@ -47,13 +47,13 @@ export default function RootLayout({
         <meta name="mobile-web-app-capable" content="yes" />
       </head>
       <body className="font-body antialiased bg-background min-h-screen flex flex-col relative overflow-x-hidden">
-        {/* العلامة المائية في الخلفية - مركزية وشفافة */}
-        <div className="fixed inset-0 -z-50 pointer-events-none flex items-center justify-center opacity-[0.06]">
+        {/* العلامة المائية في الخلفية - مركزية وشفافة جداً */}
+        <div className="fixed inset-0 -z-50 pointer-events-none flex items-center justify-center opacity-[0.08]">
           <Image 
             src={APP_LOGO_URL} 
             alt="المنصة المتقدمة للهندسة الطبية" 
-            width={800} 
-            height={800} 
+            width={700} 
+            height={700} 
             className="object-contain"
             priority
           />

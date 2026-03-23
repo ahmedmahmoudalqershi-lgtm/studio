@@ -124,7 +124,7 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-slate-100 p-4 relative overflow-hidden" dir="rtl">
       <Card className="w-full max-w-md shadow-[0_20px_50px_rgba(8,_112,_184,_0.2)] border-none overflow-hidden rounded-[2.5rem] z-10 relative bg-white/95 backdrop-blur-md">
         <div className="bg-primary p-8 text-center text-primary-foreground relative overflow-hidden">
-          <div className="bg-white mx-auto w-32 h-32 rounded-3xl flex items-center justify-center mb-4 p-1 shadow-2xl">
+          <div className="bg-white mx-auto w-32 h-32 rounded-3xl flex items-center justify-center mb-4 p-1 shadow-2xl overflow-hidden">
             <Image 
               src={APP_LOGO_URL} 
               alt="المنصة المتقدمة للهندسة الطبية" 
@@ -134,7 +134,7 @@ export default function LoginPage() {
               priority
             />
           </div>
-          <CardTitle className="text-3xl font-black font-headline tracking-tight">بوابة الصيانة</CardTitle>
+          <CardTitle className="text-2xl font-black font-headline tracking-tight">بوابة الصيانة</CardTitle>
           <CardDescription className="text-primary-foreground/90 mt-2 font-medium">المنصة المتقدمة للهندسة الطبية</CardDescription>
         </div>
 
