@@ -1,5 +1,12 @@
+
 {
   "placeholderImages": [
+    {
+      "id": "med-platform-logo",
+      "description": "المنصة المتقدمة للهندسة الطبية - شعار احترافي",
+      "imageUrl": "https://picsum.photos/seed/med-platform-logo/800/800",
+      "imageHint": "medical engineering logo"
+    },
     {
       "id": "mri-scanner",
       "description": "MRI Scanner machine in a clean hospital room",
@@ -23,18 +30,6 @@
       "description": "Emergency portable defibrillator",
       "imageUrl": "https://picsum.photos/seed/defib/800/600",
       "imageHint": "defibrillator"
-    },
-    {
-      "id": "engineer-profile",
-      "description": "Professional medical engineer portrait",
-      "imageUrl": "https://picsum.photos/seed/engineer/300/300",
-      "imageHint": "professional man"
-    },
-    {
-      "id": "hospital-profile",
-      "description": "Modern hospital building facade",
-      "imageUrl": "https://picsum.photos/seed/hospital/300/300",
-      "imageHint": "hospital building"
     }
   ]
 }
