@@ -1,8 +1,10 @@
+
 'use client';
 
 import React, { useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { 
   LayoutDashboard, 
   Stethoscope, 
@@ -10,7 +12,6 @@ import {
   User, 
   Search,
   Bell,
-  Wrench,
   LogOut,
   Users,
   ShieldCheck,
@@ -33,6 +34,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { NotificationManager } from '@/components/NotificationManager';
+
+const APP_LOGO_URL = `https://picsum.photos/seed/med-platform/800/800`;
 
 interface ShellProps {
   children: React.ReactNode;
@@ -94,7 +97,6 @@ export function Shell({ children }: ShellProps) {
     markAsRead(notif.id);
     if (notif.requestId) {
       let url = `/requests/${notif.requestId}`;
-      // إذا كان إشعار دردشة، أضف معامل لفتحها تلقائياً
       if (notif.type === 'chat_message' && notif.engineerId) {
         url += `?chatWith=${notif.engineerId}`;
       }
@@ -134,7 +136,9 @@ export function Shell({ children }: ShellProps) {
   if (isUserLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <Wrench className="h-10 w-10 text-primary animate-spin" />
+        <div className="w-12 h-12 relative animate-pulse">
+           <Image src={APP_LOGO_URL} alt="Logo" fill className="object-contain" />
+        </div>
       </div>
     );
   }
@@ -142,16 +146,16 @@ export function Shell({ children }: ShellProps) {
   const currentProfileImage = profile?.profileImageUrl || `https://picsum.photos/seed/${user?.uid}/100/100`;
 
   return (
-    <div className="flex flex-col min-h-screen bg-slate-50">
+    <div className="flex flex-col min-h-screen">
       <NotificationManager />
       <header className="sticky top-0 z-40 w-full border-b bg-white/80 backdrop-blur-md">
         <div className="container flex h-16 items-center justify-between px-6 mx-auto">
           <div className="flex items-center gap-3">
             <Link href="/dashboard" className="flex items-center gap-3 group">
-              <div className="bg-primary p-2 rounded-xl text-primary-foreground group-hover:scale-110 transition-transform shadow-lg shadow-primary/20">
-                <Wrench className="h-6 w-6" />
+              <div className="relative w-10 h-10 group-hover:scale-110 transition-transform">
+                <Image src={APP_LOGO_URL} alt="صيانة بلس" fill className="object-contain" />
               </div>
-              <h1 className="text-xl font-black font-headline hidden sm:block tracking-tight">صيانة بلس</h1>
+              <h1 className="text-xl font-black font-headline hidden sm:block tracking-tight text-primary">صيانة بلس</h1>
             </Link>
           </div>
           
@@ -240,7 +244,7 @@ export function Shell({ children }: ShellProps) {
         </div>
       </header>
 
-      <main className="flex-1 pb-24 md:pb-12">
+      <main className="flex-1 pb-24 md:pb-12 z-10">
         <div className="container px-6 py-8 mx-auto">
           {children}
         </div>

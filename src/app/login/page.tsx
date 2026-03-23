@@ -3,16 +3,19 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { useAuth, useUser, useFirestore } from '@/firebase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Label } from '@/components/ui/label';
-import { Wrench, Hospital, ShieldCheck, Loader2, User as UserIcon, Settings } from 'lucide-react';
+import { Hospital, ShieldCheck, Loader2, User as UserIcon, Settings } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+
+const APP_LOGO_URL = `https://picsum.photos/seed/med-platform/800/800`;
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -58,7 +61,6 @@ export default function LoginPage() {
         const userCredential = await createUserWithEmailAndPassword(auth, email.trim(), password);
         const newUser = userCredential.user;
 
-        // 1. إنشاء وثيقة المستخدم الأساسية
         await setDoc(doc(firestore, 'users', newUser.uid), {
           id: newUser.uid,
           email: newUser.email,
@@ -68,7 +70,6 @@ export default function LoginPage() {
           updatedAt: serverTimestamp(),
         });
 
-        // 2. إذا كان مديراً، يضاف لقائمة مدراء الأدوار
         if (activeRole === 'admin') {
           await setDoc(doc(firestore, 'roles_admin', newUser.uid), {
             id: newUser.uid,
@@ -77,7 +78,6 @@ export default function LoginPage() {
           });
         }
 
-        // 3. إنشاء الملف الشخصي المتخصص
         if (activeRole === 'hospital') {
           await setDoc(doc(firestore, 'hospitalProfiles', newUser.uid), {
             id: newUser.uid,
@@ -121,14 +121,19 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4" dir="rtl">
-      <Card className="w-full max-w-md shadow-2xl border-none overflow-hidden rounded-[2.5rem]">
+    <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4 relative overflow-hidden" dir="rtl">
+       {/* علامة مائية مخصصة لصفحة الدخول */}
+       <div className="absolute inset-0 pointer-events-none flex items-center justify-center opacity-[0.05]">
+          <Image src={APP_LOGO_URL} alt="Watermark" width={500} height={500} className="object-contain" />
+       </div>
+
+      <Card className="w-full max-w-md shadow-2xl border-none overflow-hidden rounded-[2.5rem] z-10 relative bg-white/90 backdrop-blur-sm">
         <div className="bg-primary p-8 text-center text-primary-foreground relative overflow-hidden">
-          <div className="bg-white/20 backdrop-blur-md mx-auto w-16 h-16 rounded-2xl flex items-center justify-center mb-4">
-            <Wrench className="h-8 w-8" />
+          <div className="bg-white mx-auto w-20 h-20 rounded-2xl flex items-center justify-center mb-4 p-2 shadow-lg">
+            <Image src={APP_LOGO_URL} alt="صيانة بلس" width={60} height={60} className="object-contain" />
           </div>
           <CardTitle className="text-3xl font-black font-headline tracking-tight">بوابة الصيانة</CardTitle>
-          <CardDescription className="text-primary-foreground/80 mt-2">نظام صيانة الأجهزة الطبية المتكامل</CardDescription>
+          <CardDescription className="text-primary-foreground/80 mt-2">المنصة المتقدمة للهندسة الطبية</CardDescription>
         </div>
 
         <CardContent className="pt-8">

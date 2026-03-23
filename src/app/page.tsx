@@ -1,7 +1,10 @@
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { Button } from '@/components/ui/button';
-import { Wrench, Hospital, ShieldCheck, Activity, Globe, Users, Zap } from 'lucide-react';
+import { Hospital, ShieldCheck, Activity, Globe, Users, Zap } from 'lucide-react';
+
+const APP_LOGO_URL = `https://picsum.photos/seed/med-platform/800/800`;
 
 export default function Home() {
   return (
@@ -15,14 +18,14 @@ export default function Home() {
         </div>
 
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-1000 max-w-4xl">
-          <div className="bg-primary mx-auto w-24 h-24 rounded-[2.5rem] flex items-center justify-center text-primary-foreground shadow-2xl shadow-primary/40 transform hover:rotate-12 transition-transform cursor-pointer">
-            <Wrench className="h-12 w-12" />
+          <div className="relative mx-auto w-32 h-32 rounded-[2.5rem] bg-white p-4 shadow-2xl shadow-primary/20 transform hover:rotate-12 transition-transform cursor-pointer overflow-hidden border">
+            <Image src={APP_LOGO_URL} alt="صيانة بلس" fill className="object-contain p-2" />
           </div>
           <h1 className="text-5xl sm:text-7xl font-black font-headline tracking-tighter text-primary leading-tight">
-            مستقبل صيانة <br /> <span className="text-secondary">الأجهزة الطبية</span>
+            المنصة المتقدمة <br /> <span className="text-secondary">للهندسة الطبية</span>
           </h1>
           <p className="text-xl sm:text-2xl text-muted-foreground max-w-2xl mx-auto leading-relaxed font-medium">
-            المنصة الذكية الأولى في المنطقة لربط المستشفيات بنخبة المهندسين المعتمدين. جودة، سرعة، وموثوقية في مكان واحد.
+            المنصة الذكية الأولى لربط المستشفيات بنخبة المهندسين المعتمدين. جودة، سرعة، وموثوقية في مكان واحد.
           </p>
         </div>
 
@@ -41,7 +44,7 @@ export default function Home() {
               <ShieldCheck className="h-8 w-8 text-primary group-hover:rotate-12 transition-transform" />
               <div className="flex flex-col">
                 <span>بوابة المهندسين</span>
-                <span className="text-[10px] opacity-70 font-normal text-muted-foreground">قدم عروضك وابدأ العمل</span>
+                <span className="text-[10px] opacity-70 font-normal text-muted-foreground text-right">قدم عروضك وابدأ العمل</span>
               </div>
             </Button>
           </Link>
@@ -81,7 +84,9 @@ export default function Home() {
           </div>
           <div className="bg-white/60 backdrop-blur-sm p-8 rounded-[2.5rem] border-2 border-transparent hover:border-primary/10 shadow-xl shadow-slate-200/50 space-y-4 transition-all">
             <div className="bg-purple-100 w-12 h-12 rounded-2xl flex items-center justify-center">
-              <Wrench className="h-6 w-6 text-purple-600" />
+               <div className="relative w-6 h-6">
+                 <Image src={APP_LOGO_URL} alt="AI" fill className="object-contain" />
+               </div>
             </div>
             <h3 className="font-black text-2xl text-primary">مساعد AI التقني</h3>
             <p className="text-muted-foreground leading-relaxed">استخدم الذكاء الاصطناعي لتشخيص الأعطال وصياغة الطلبات التقنية بدقة تذهل الخبراء.</p>

@@ -4,9 +4,10 @@ import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
 import { FirebaseClientProvider } from '@/firebase';
 import Script from 'next/script';
+import Image from 'next/image';
 
-// أيقونة PNG مميزة تعبر عن الصيانة الطبية والاحترافية (درع طبي)
-const APP_ICON_PNG = `https://img.icons8.com/fluency/512/shield-with-a-medical-cross.png`;
+// رابط الشعار الجديد (المنصة المتقدمة للهندسة الطبية)
+const APP_LOGO_URL = `https://picsum.photos/seed/med-platform/800/800`;
 
 export const viewport: Viewport = {
   themeColor: '#2862B4',
@@ -17,8 +18,8 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: 'صيانة بلس | نظام صيانة الأجهزة الطبية',
-  description: 'المنصة الذكية الأولى لربط المستشفيات مع نخبة مهندسي الصيانة الطبية المعتمدين.',
+  title: 'صيانة بلس | المنصة المتقدمة للهندسة الطبية',
+  description: 'النظام المتكامل لإدارة صيانة الأجهزة الطبية في المستشفيات وربطها بالمهندسين المعتمدين.',
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
@@ -26,8 +27,8 @@ export const metadata: Metadata = {
     title: 'صيانة بلس',
   },
   icons: {
-    icon: APP_ICON_PNG,
-    apple: APP_ICON_PNG,
+    icon: APP_LOGO_URL,
+    apple: APP_LOGO_URL,
   },
 };
 
@@ -45,13 +46,23 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="mobile-web-app-capable" content="yes" />
       </head>
-      <body className="font-body antialiased bg-background min-h-screen flex flex-col">
+      <body className="font-body antialiased bg-background min-h-screen flex flex-col relative overflow-x-hidden">
+        {/* العلامة المائية في الخلفية */}
+        <div className="fixed inset-0 -z-50 pointer-events-none flex items-center justify-center opacity-[0.03]">
+          <Image 
+            src={APP_LOGO_URL} 
+            alt="Watermark" 
+            width={600} 
+            height={600} 
+            className="object-contain"
+          />
+        </div>
+
         <FirebaseClientProvider>
           {children}
           <Toaster />
         </FirebaseClientProvider>
         
-        {/* تسجيل الـ Service Worker ضروري جداً لظهور زر التثبيت الحقيقي */}
         <Script id="register-sw" strategy="afterInteractive">
           {`
             if ('serviceWorker' in navigator) {
