@@ -15,7 +15,7 @@ import { useToast } from '@/hooks/use-toast';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 
-const APP_LOGO_URL = `https://img.icons8.com/fluency/240/key.png`;
+const APP_LOGO_URL = `https://img.icons8.com/fluency/240/biotech.png`;
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');

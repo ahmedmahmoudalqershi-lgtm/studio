@@ -35,7 +35,8 @@ import {
 import { updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { NotificationManager } from '@/components/NotificationManager';
 
-const APP_LOGO_URL = `https://img.icons8.com/fluency/240/key.png`;
+// الشعار الهندسي المطور
+const APP_LOGO_URL = `https://img.icons8.com/fluency/240/biotech.png`;
 
 interface ShellProps {
   children: React.ReactNode;

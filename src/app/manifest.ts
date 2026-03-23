@@ -1,8 +1,8 @@
 
 import { MetadataRoute } from 'next'
 
-// استخدام رمز المفتاح التقني كأيقونة للتطبيق القابل للتثبيت
-const ICON_URL = 'https://img.icons8.com/fluency/240/key.png';
+// استخدام الشعار الهندسي المتطور كأيقونة للتطبيق
+const ICON_URL = 'https://img.icons8.com/fluency/240/biotech.png';
 
 export default function manifest(): MetadataRoute.Manifest {
   return {

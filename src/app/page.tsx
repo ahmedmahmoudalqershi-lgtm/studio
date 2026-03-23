@@ -4,7 +4,8 @@ import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Hospital, ShieldCheck, Activity, Globe, Users, Zap } from 'lucide-react';
 
-const APP_LOGO_URL = `https://img.icons8.com/fluency/240/key.png`;
+// الشعار الهندسي المطور
+const APP_LOGO_URL = `https://img.icons8.com/fluency/240/biotech.png`;
 
 export default function Home() {
   return (

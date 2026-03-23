@@ -6,8 +6,8 @@ import { FirebaseClientProvider } from '@/firebase';
 import Script from 'next/script';
 import Image from 'next/image';
 
-// الشعار المطلوب: رمز المفتاح التقني الذي يعبر عن الصيانة
-const APP_LOGO_URL = `https://img.icons8.com/fluency/240/key.png`;
+// الشعار الهندسي المطور: يعبر عن التكنولوجيا الحيوية والهندسة الطبية
+const APP_LOGO_URL = `https://img.icons8.com/fluency/240/biotech.png`;
 
 export const viewport: Viewport = {
   themeColor: '#2862B4',
@@ -47,9 +47,9 @@ export default function RootLayout({
         <meta name="mobile-web-app-capable" content="yes" />
       </head>
       <body className="font-body antialiased bg-background min-h-screen flex flex-col relative overflow-x-hidden">
-        {/* العلامة المائية - رمز المفتاح المركزي في خلفية كل الصفحات */}
+        {/* العلامة المائية المركزية - الشعار الهندسي في خلفية كل الصفحات بنسبة شفافية هادئة */}
         <div className="fixed inset-0 -z-50 pointer-events-none flex items-center justify-center opacity-[0.04]">
-          <div className="relative w-[300px] h-[300px] md:w-[550px] md:h-[550px]">
+          <div className="relative w-[350px] h-[350px] md:w-[650px] md:h-[650px]">
             <Image 
               src={APP_LOGO_URL} 
               alt="العلامة المائية للمنصة" 
